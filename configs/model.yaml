@@ -1,0 +1,43 @@
+# Конфигурация архитектуры TinyKAN_ASR
+# Источник истины: src/kan_asr/models/tiny_kan_asr.py
+#
+# Вход:  mel-спектрограмма [B, 40, 1, T]
+# Выход: CTC-логиты [B, vocab_size, 1, T_out]
+
+model:
+  name: TinyKAN_ASR
+  n_mels: 40
+  vocab_size: 35
+
+  # Encoder: 3x DepthwiseSeparableConv1D_as_2D
+  encoder:
+    - {in_c: 40,  out_c: 64,  kernel_size: 5, stride: 2}
+    - {in_c: 64,  out_c: 128, kernel_size: 5, stride: 2}
+    - {in_c: 128, out_c: 128, kernel_size: 5, stride: 1}
+
+  # KAN-блоки: 2x FastKANConv1x1 (residual + BatchNorm)
+  kan:
+    num_grids: 6
+    grid_min: -2.0
+    grid_max: 2.0
+    channels: 128
+
+  # Head: Conv2d 1x1
+  head:
+    in_channels: 128
+    out_channels: 35
+
+# Mel-спектрограмма (src/kan_asr/data/mel.py)
+mel:
+  sr: 16000
+  n_fft: 400
+  hop_length: 160
+  n_mels: 40
+  center: true
+
+# Статический вход для экспорта на NPU RV1103
+# Источник истины: src/kan_asr/export/export_onnx.py (opset_version=13)
+export:
+  input_shape: [1, 40, 1, 200]   # 2 секунды при hop_length=160
+  output_shape: [1, 35, 1, 50]
+  opset: 13

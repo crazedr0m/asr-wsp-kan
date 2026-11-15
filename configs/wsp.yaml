@@ -1,0 +1,37 @@
+# Конфигурация Weight-Space Programming (WSP)
+# Источник истины: src/kan_asr/wsp/{extract,project,initialize,hyper_adapter}.py
+
+wsp:
+  # --- extract.py: SVD-извлечение свёрточного подпространства из Whisper ---
+  extract:
+    target_in_mels: 40      # 80 (Whisper) -> 40 (TinyKAN_ASR)
+    target_out_c: 64
+    kernel_size: 5
+
+  # --- project.py: аппроксимация MLP-блоков Whisper в FastKAN-Гауссианы ---
+  # Источник истины: src/kan_asr/wsp/project.py (reg_lambda=1e-2)
+  project:
+    num_samples: 2048       # число сэмплов для lstsq/Ridge-аппроксимации
+    ridge_alpha: 1.0e-2     # регуляризация (критична для INT8 на RV1103)
+    block_indices: [0, 3]   # kan1 <- block 0, kan2 <- последний блок (3)
+
+  # --- initialize.py: полная инициализация студента ---
+  # Источник истины: src/kan_asr/wsp/initialize.py
+  initialize:
+    whisper_state_dict: artifacts/piper/whisper_tiny.pt
+    device: cpu
+
+  # --- hyper_adapter.py: низкоранговые Delta-W (WeightSpaceHyperAdapter) ---
+  hyper_adapter:
+    latent_dim: 32
+    rank: 8
+
+# Учитель Whisper (src/kan_asr/models/whisper_teacher.py)
+teacher:
+  n_mels: 80
+  n_ctx: 1500
+  n_state: 384
+  n_head: 6
+  n_layer: 4
+  # Слои, с которых снимаются признаки для CKA-выравнивания
+  feature_blocks: [1, 3]

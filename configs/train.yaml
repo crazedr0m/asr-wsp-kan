@@ -1,0 +1,37 @@
+# Конфигурация обучения TinyKAN_ASR (CTC + CKA-выравнивание)
+# Источник истины: src/kan_asr/training/train.py, src/kan_asr/training/alignment.py
+
+train:
+  data_dir: data/synth
+  epochs: 5
+  batch_size: 16
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  grad_clip: 1.0
+  device: auto              # auto | cuda | cpu
+  bf16: auto                # auto | true | false
+
+  # Калибровочные данные для RKNN INT8
+  calib:
+    dir: data/calib
+    file: data/calib/calib_dataset.txt
+    num_samples: 20
+    window_frames: 200      # 2 секунды при hop_length=160
+
+  checkpoint: artifacts/checkpoints/best.pt
+
+# CKA-выравнивание (src/kan_asr/training/alignment.py)
+# enabled=false по умолчанию; включается флагом `scripts/train.py --align`
+alignment:
+  enabled: false
+  student_dim: 128
+  teacher_dim: 384
+  anchor_weight: 1.0e-3
+  align_weight: 0.3
+  cka_weight: 1.0
+  cosine_weight: 1.0
+
+# Метрики (src/kan_asr/training/metrics.py)
+metrics:
+  compute_cer: true
+  compute_wer: true

@@ -1,0 +1,30 @@
+# Конфигурация Telegram-бота (Active Learning / Human-in-the-Loop)
+# Источник истины: src/kan_asr/bot/{app,handlers,finetune_worker}.py
+
+bot:
+  # Токен: приоритет — CLI --token, затем env KAN_ASR_BOT_TOKEN, затем это поле
+  token: ""
+  chat_id: null
+  model: artifacts/checkpoints/best.pt
+
+  # Куда сохраняются голосовые сэмплы от пользователей
+  data_dir: data/real
+  wavs_dir: data/real/wavs
+  metadata: data/real/metadata.csv
+
+  # Long polling
+  poll_timeout: 30
+  retry_delay: 3
+
+# Фоновое дообучение (finetune_worker.py)
+# Источник истины: src/kan_asr/bot/finetune_worker.py
+finetune:
+  threshold: 20             # порог подтверждённых сэмплов для запуска
+  new_data_ratio: 0.7       # 70% новых + 30% базовых
+  synth_dir: data/synth
+  real_dir: data/real
+  out_dir: data/finetune    # resolver.data / "finetune"
+  epochs: 3
+  batch_size: 8
+  lr: 5.0e-4
+  use_hyper_adapter: true   # обучаем только низкоранговые Delta-W

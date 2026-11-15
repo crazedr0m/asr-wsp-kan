@@ -1,0 +1,62 @@
+# Виртуальное окружение
+venv/
+.venv/
+env/
+.env
+
+# Данные и артефакты (не в git)
+data/
+artifacts/
+cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Сборка пакета и кэши инструментов
+*.egg-info/
+build/
+dist/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Скачанные и обученные модели
+*.onnx
+*.pt
+*.pth
+*.bin
+*.ckpt
+*.safetensors
+*.onnx.json
+*.rknn
+
+# Архивы (история переноса в archive/)
+*.zip
+*.tar.gz
+*.tgz
+
+# IDE и редакторы
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Логирование
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Временные файлы
+*.tmp
+*.bak

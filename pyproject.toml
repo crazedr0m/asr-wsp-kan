@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kan-asr"
+version = "0.1.0"
+description = "Weight-Space Programming для компактного распознавания речи на базе KAN (FastKAN) с портированием на Rockchip RV1103 NPU"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+  {name = "KAN-ASR Team", email = "dev@example.com"}
+]
+keywords = ["asr", "kan", "fastkan", "weight-space-programming", "rknn", "rv1103"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+  "torch>=2.0",
+  "numpy>=1.20",
+  "scipy>=1.7",
+  "onnx>=1.12",
+  "onnxruntime>=1.12",
+  "ffmpeg-python>=0.2",
+  "aiohttp>=3.8",
+  "websockets>=11.0",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+  "ruff>=0.1",
+  "mypy>=1.0",
+  "black>=23.0",
+]
+# Тяжёлые/платформо-зависимые зависимости — только по требованию
+rknn = [
+  "rknn-toolkit2>=1.5",
+]
+tts = [
+  "piper-tts>=0.1",
+]
+all = [
+  "rknn-toolkit2>=1.5",
+  "piper-tts>=0.1",
+]
+
+[project.scripts]
+generate-dataset = "scripts.generate_dataset:main"
+train = "scripts.train:main"
+export-onnx = "scripts.export_onnx:main"
+convert-rknn = "scripts.convert_rknn:main"
+run-bot = "scripts.run_bot:main"
+wsp-init = "scripts.wsp_init:main"
+
+[tool.setuptools.packages.find]
+where = ["src", "."]
+include = ["kan_asr*", "scripts*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true

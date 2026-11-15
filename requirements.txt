@@ -1,0 +1,14 @@
+# Runtime dependencies for KAN-ASR
+torch>=2.0
+numpy>=1.20
+scipy>=1.7
+onnx>=1.12
+onnxruntime>=1.12
+ffmpeg-python>=0.2
+aiohttp>=3.8
+websockets>=11.0
+pyyaml>=6.0
+
+# Опциональные (тяжёлые / платформо-зависимые) — см. requirements-optional.txt
+# rknn-toolkit2>=1.5   # конвертация в RKNN (Этап 5)
+# piper-tts>=0.1       # генерация синтетического датасета
