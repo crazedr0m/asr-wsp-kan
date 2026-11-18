@@ -371,6 +371,77 @@ class DeviceRecognitionResult:
         }
 
 
+def _read_input_quant(rknn) -> tuple[float, int] | None:
+    """
+    Читает параметры аффинного квантования входного тензора из runtime.
+
+    Возвращает ``(scale, zero_point)`` или ``None``, если toolkit не отдаёт
+    атрибуты. Нужен, чтобы квантовать Mel теми же scale/zp, что и модель,
+    и не «срезать» значения при подаче на плату.
+    """
+    try:
+        runtime = rknn.rknn_base.rknn_runtime
+        attr = runtime.get_tensor_attr(0)
+        scale = float(attr.scale)
+        zp = int(attr.zp)
+    except Exception:  # noqa: BLE001 - интроспекция toolkit, деградируем мягко
+        return None
+    if scale <= 0:
+        return None
+    return scale, zp
+
+
+def _quantize_mel_uint8(mel: np.ndarray, scale: float, zp: int) -> np.ndarray:
+    """
+    Аффинное квантование Mel ``float32`` → ``uint8``.
+
+    ``q = clip(round(x / scale) + zp, 0, 255)`` — те же ``scale``/``zp``, что
+    и у входного тензора INT8-модели на плате.
+    """
+    q = np.round(np.asarray(mel, dtype=np.float32) / float(scale)) + float(zp)
+    quantized: np.ndarray = np.clip(q, 0, 255).astype(np.uint8)
+    return quantized
+
+
+def _nchw_to_nhwc(arr: np.ndarray) -> np.ndarray:
+    """``[1, C, 1, T]`` → ``[1, 1, T, C]`` (NHWC-раскладка входа NPU)."""
+    transposed: np.ndarray = np.transpose(arr, (0, 2, 3, 1))
+    return np.ascontiguousarray(transposed)
+
+
+def _prepare_device_input(
+    mel: np.ndarray,
+    rknn,
+    data_format: str = "nhwc",
+    input_dtype: str = "uint8",
+    verbose: bool = False,
+) -> np.ndarray:
+    """
+    Готовит вход для INT8-модели на плате.
+
+    Квантованная модель на RV1103 принимает ``uint8`` в раскладке
+    NHWC ``[1, 1, T, C]``. scale/zero-point берутся из самого runtime, чтобы
+    значения Mel квантовались корректно (а не грубо «срезались» в [0, 255]).
+    """
+    from ..export.verify_rknn import _to_uint8_input
+
+    if input_dtype != "uint8":
+        arr = np.asarray(mel, dtype=np.float32)
+        return _nchw_to_nhwc(arr) if data_format == "nhwc" else arr
+
+    quant = _read_input_quant(rknn)
+    if quant is None:
+        if verbose:
+            print("[WARN] Не удалось прочитать scale/zp входа — грубое квантование")
+        arr = _to_uint8_input(mel)
+    else:
+        scale, zp = quant
+        if verbose:
+            print(f"--> Квантование входа: scale={scale:.6f}, zp={zp}")
+        arr = _quantize_mel_uint8(mel, scale, zp)
+    return _nchw_to_nhwc(arr) if data_format == "nhwc" else arr
+
+
 def recognize_on_device(
     wav_path: str,
     rknn_model: str | None = None,
@@ -378,7 +449,7 @@ def recognize_on_device(
     device_id: str | None = None,
     time_frames: int = DEFAULT_TIME_FRAMES,
     data_format: str = "nhwc",
-    input_dtype: str = "float32",
+    input_dtype: str = "uint8",
     auto_start_server: bool = True,
     verbose: bool = False,
 ) -> DeviceRecognitionResult:
@@ -389,6 +460,10 @@ def recognize_on_device(
     подаётся в INT8-модель по USB/ADB. При необходимости поднимает
     ``rknn_server`` на плате.
 
+    Вход квантуется в ``uint8`` теми же scale/zp, что и модель (берутся из
+    runtime), и раскладывается в NHWC ``[1, 1, T, C]`` — единственный формат,
+    который принимает квантованная модель на плате.
+
     Args:
         wav_path: путь к WAV.
         rknn_model: путь к ``.rknn`` (по умолчанию ``artifacts/rknn/tiny_kan_asr_rv1103.rknn``).
@@ -396,7 +471,7 @@ def recognize_on_device(
         device_id: серийный номер платы (по умолчанию — единственное устройство).
         time_frames: длина окна Mel.
         data_format: формат входа для ``rknn.inference`` (``nhwc``/``nchw``).
-        input_dtype: ``float32`` (тулчейн квантует сам) или ``uint8``.
+        input_dtype: ``uint8`` (обязателен для квантованной модели) или ``float32``.
         auto_start_server: поднять ``rknn_server``, если он не запущен.
         verbose: печатать прогресс.
 
@@ -408,7 +483,6 @@ def recognize_on_device(
         _ensure_device,
         _import_rknn,
         _start_rknn_server,
-        _to_uint8_input,
     )
 
     RKNN = _import_rknn()
@@ -427,10 +501,6 @@ def recognize_on_device(
         _start_rknn_server(device_id, adb)
 
     mel = wav_to_mel_input(wav_path, time_frames=time_frames)
-    if input_dtype == "uint8":
-        sample_input = _to_uint8_input(mel)
-    else:
-        sample_input = np.asarray(mel, dtype=np.float32)
 
     rknn = RKNN(verbose=verbose)
     try:
@@ -445,6 +515,14 @@ def recognize_on_device(
             raise RuntimeError(
                 f"Ошибка init_runtime(target={target}, device_id={device_id})"
             )
+
+        sample_input = _prepare_device_input(
+            mel,
+            rknn,
+            data_format=data_format,
+            input_dtype=input_dtype,
+            verbose=verbose,
+        )
 
         start = time.perf_counter()
         outputs = rknn.inference(inputs=[sample_input], data_format=[data_format])
