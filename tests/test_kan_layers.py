@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Тесты KAN-слоёв и архитектуры TinyKAN_ASR."""
 
 import os

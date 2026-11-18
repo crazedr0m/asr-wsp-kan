@@ -56,7 +56,14 @@ class WhisperTinyTeacher(nn.Module):
     Выход: словарь промежуточных скрытых состояний [Batch, 384, Time // 2] (шаг 20 мс).
     """
 
-    def __init__(self, n_mels: int = 80, n_ctx: int = 1500, n_state: int = 384, n_head: int = 6, n_layer: int = 4):
+    def __init__(
+        self,
+        n_mels: int = 80,
+        n_ctx: int = 1500,
+        n_state: int = 384,
+        n_head: int = 6,
+        n_layer: int = 4,
+    ):
         super().__init__()
         self.conv1 = nn.Conv1d(n_mels, n_state, kernel_size=3, padding=1)
         self.conv2 = nn.Conv1d(n_state, n_state, kernel_size=3, stride=2, padding=1)
@@ -92,7 +99,7 @@ class WhisperTinyTeacher(nn.Module):
 
     @torch.no_grad()
     def forward_features(self, mel_80: torch.Tensor) -> dict:
-        # mel_80: [B, 80, T]
+        # Вход mel_80: B x 80 x T
         x = F.gelu(self.conv1(mel_80))
         x = F.gelu(self.conv2(x))
         x = x.permute(0, 2, 1)  # [B, T//2, 384]

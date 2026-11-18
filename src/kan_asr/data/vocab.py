@@ -17,7 +17,7 @@ def text_to_ids(text: str) -> list[int]:
 def greedy_ctc_decode(logits: "torch.Tensor") -> list[str]:  # type: ignore
     """
     CTC декодинг (greedy).
-    
+
     logits: [Batch, Vocab, 1, Time]
     returns: список предсказанных строк
     """

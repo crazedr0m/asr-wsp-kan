@@ -13,8 +13,8 @@ import os
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch import nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from ..data.dataset import ASRDataset, collate_fn
@@ -35,7 +35,9 @@ def _load_wsp_checkpoint(
     if not wsp_checkpoint:
         return False
     if not os.path.exists(wsp_checkpoint):
-        logger.warning("WSP-чекпоинт не найден: %s — обучение со случайной инициализации", wsp_checkpoint)
+        logger.warning(
+            "WSP-чекпоинт не найден: %s — обучение со случайной инициализации", wsp_checkpoint
+        )
         return False
 
     state = torch.load(wsp_checkpoint, map_location=device)
@@ -67,9 +69,7 @@ def _build_alignment(
     from ..models.whisper_teacher import WhisperTinyTeacher
 
     if not whisper_state or not os.path.exists(whisper_state):
-        logger.warning(
-            "CKA-выравнивание отключено: веса Whisper не найдены (%s)", whisper_state
-        )
+        logger.warning("CKA-выравнивание отключено: веса Whisper не найдены (%s)", whisper_state)
         return None, None
 
     teacher = WhisperTinyTeacher().to(device)
@@ -116,7 +116,7 @@ def _evaluate_after_training(
             recognize_torch,
             save_recognition_report,
         )
-    except Exception as exc:  # noqa: BLE001 - защитная ветка (не роняем обучение)
+    except Exception as exc:
         logger.warning("Eval распознавания недоступен: %s", exc)
         return
 
@@ -131,7 +131,7 @@ def _evaluate_after_training(
             lambda wav: recognize_torch(wav, checkpoint_path, device=device),
             verbose=False,
         )
-    except Exception as exc:  # noqa: BLE001 - защитная ветка (не роняем обучение)
+    except Exception as exc:
         logger.warning("Eval распознавания не удался: %s", exc)
         return
 
@@ -243,10 +243,7 @@ def train(
             sum(p.numel() for p in adapter.parameters()),
         )
 
-    if adapter is not None:
-        params = list(adapter.parameters())
-    else:
-        params = list(model.parameters())
+    params = list(adapter.parameters()) if adapter is not None else list(model.parameters())
     if align_criterion is not None:
         params += list(align_criterion.parameters())
 
@@ -264,8 +261,8 @@ def train(
         total_cos = 0.0
         n_batches = 0
 
-        for audios, audio_lens, targets, target_lens in loader:
-            audios, targets = audios.to(device), targets.to(device)
+        for batch_audios, _audio_lens, batch_targets, target_lens in loader:
+            audios, targets = batch_audios.to(device), batch_targets.to(device)
             with torch.no_grad():
                 mels = mel_extractor(audios)  # [B, 40, 1, T]
                 # Сохраняем первые N спектрограмм для калибровки RKNN INT8
@@ -278,9 +275,7 @@ def train(
                             mels[b : b + 1, :, :, :calib_window_frames],
                             (0, max(0, calib_window_frames - mels.shape[-1])),
                         )
-                        npy_path = os.path.join(
-                            calib_dir, f"calib_{len(calib_list):03d}.npy"
-                        )
+                        npy_path = os.path.join(calib_dir, f"calib_{len(calib_list):03d}.npy")
                         np.save(npy_path, sample_mel.cpu().numpy())
                         calib_list.append(npy_path)
 
@@ -340,9 +335,7 @@ def train(
                 total_cos / n_batches,
             )
         else:
-            logger.info(
-                "Epoch %d/%d | CTC Loss: %.4f", epoch, epochs, total_ctc / n_batches
-            )
+            logger.info("Epoch %d/%d | CTC Loss: %.4f", epoch, epochs, total_ctc / n_batches)
 
     # Сохраняем калибровочный список для rknn-toolkit2
     os.makedirs(os.path.dirname(calib_file) or ".", exist_ok=True)
@@ -355,9 +348,7 @@ def train(
     torch.save(model.state_dict(), checkpoint_path)
     logger.info("Чекпоинт сохранён: %s", checkpoint_path)
     if adapter is not None:
-        adapter_path = os.path.join(
-            os.path.dirname(checkpoint_path) or ".", "hyper_adapter.pt"
-        )
+        adapter_path = os.path.join(os.path.dirname(checkpoint_path) or ".", "hyper_adapter.pt")
         torch.save(adapter.state_dict(), adapter_path)
         logger.info("Hyper-Adapter сохранён: %s", adapter_path)
     logger.info("Список калибровки: %s", calib_file)

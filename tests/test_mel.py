@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Тесты PureMelSpectrogram (src/kan_asr/data/mel.py)."""
 
 import os

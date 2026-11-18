@@ -123,15 +123,11 @@ class NPUFriendlyMoEKAN(nn.Module):
 
         # Эксперты на базе FastKAN
         self.experts = nn.ModuleList(
-            [
-                PureFastKANLayer(in_features, out_features, num_grids=6)
-                for _ in range(num_experts)
-            ]
+            [PureFastKANLayer(in_features, out_features, num_grids=6) for _ in range(num_experts)]
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: [Batch, Time, Features]
-        # Веса экспертов: [Batch, Time, Num_Experts]
+        # Вход x: Batch x Time x Features; веса экспертов: Batch x Time x Num_Experts
         gates = F.softmax(self.router(x), dim=-1)
 
         # Вычисляем выходы всех экспертов (при 2-3 экспертах это быстрее, чем ветвление на NPU)

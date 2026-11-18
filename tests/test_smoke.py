@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Smoke-тесты для KAN-ASR.
 
@@ -54,7 +53,7 @@ def test_ctc_decode():
 
     # Создаём dummy logits
     batch_size = 1
-    vocab_size = len(["<blank>", " "] + list("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"))
+    vocab_size = len(["<blank>", " ", *list("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")])
     time_steps = 10
 
     logits = torch.randn(batch_size, vocab_size, 1, time_steps)

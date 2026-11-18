@@ -14,7 +14,7 @@ from typing import Any
 
 from .paths import resolver
 
-__all__ = ["load_config", "get_config_value", "CONFIG_FILES"]
+__all__ = ["CONFIG_FILES", "get_config_value", "load_config"]
 
 # Имена доступных конфигов (без расширения)
 CONFIG_FILES = ("model", "wsp", "train", "bot")
@@ -51,7 +51,7 @@ def load_config(name: str, config_dir: str = None) -> dict:
         return {}
 
     yaml = _import_yaml()
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     return data or {}
 

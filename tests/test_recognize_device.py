@@ -106,16 +106,13 @@ def test_recognize_device_latency(rknn_path, recognition_cases):
     result = _recognize_board(recognition_cases[0].wav_path, rknn_path)
 
     assert result.latency_ms <= DEFAULT_MAX_LATENCY_MS, (
-        f"Latency {result.latency_ms:.1f} мс превышает потолок "
-        f"{DEFAULT_MAX_LATENCY_MS} мс"
+        f"Latency {result.latency_ms:.1f} мс превышает потолок {DEFAULT_MAX_LATENCY_MS} мс"
     )
 
 
 @pytest.mark.hardware
 @pytest.mark.recognition
-def test_recognize_device_exact_match(
-    rknn_path, recognition_cases, min_exact_match
-):
+def test_recognize_device_exact_match(rknn_path, recognition_cases, min_exact_match):
     """
     Точное совпадение распознанного текста с эталоном на реальной плате.
 
@@ -146,9 +143,7 @@ def test_recognize_device_exact_match(
 def test_recognize_device_cer(rknn_path, recognition_cases, max_cer):
     """CER распознавания на плате не выше порога (строгий gate)."""
     if not _strict_enabled():
-        pytest.skip(
-            f"Строгий gate отключён; включите {STRICT_ENV}=1 для проверки CER"
-        )
+        pytest.skip(f"Строгий gate отключён; включите {STRICT_ENV}=1 для проверки CER")
     _require_board(rknn_path)
     _require_cases(recognition_cases)
 
@@ -159,6 +154,5 @@ def test_recognize_device_cer(rknn_path, recognition_cases, max_cer):
     )
 
     assert report.cer <= max_cer, (
-        f"CER {report.cer:.4f} превышает порог {max_cer}. "
-        f"Детали: {report.to_dict()['cases']}"
+        f"CER {report.cer:.4f} превышает порог {max_cer}. Детали: {report.to_dict()['cases']}"
     )

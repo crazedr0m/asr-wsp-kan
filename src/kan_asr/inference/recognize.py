@@ -20,19 +20,18 @@
 внутри соответствующих функций.
 """
 
+from collections.abc import Callable, Sequence
 import csv
+from dataclasses import dataclass, field
 import json
 import os
 import time
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
 
 import numpy as np
 
 from ..data.mel import PureMelSpectrogram
 from ..data.vocab import greedy_ctc_decode
-from ..training.metrics import cer as _cer
-from ..training.metrics import wer as _wer
+from ..training.metrics import cer as _cer, wer as _wer
 from ..utils.paths import resolver
 
 # --- Константы -------------------------------------------------------------
@@ -199,7 +198,7 @@ def load_recognition_cases(
         return []
 
     cases: list[RecognitionCase] = []
-    with open(meta_file, "r", encoding="utf-8") as handle:
+    with open(meta_file, encoding="utf-8") as handle:
         reader = csv.DictReader(handle, delimiter="|")
         for row in reader:
             filename = (row.get("filename") or "").strip()
@@ -384,7 +383,7 @@ def _read_input_quant(rknn) -> tuple[float, int] | None:
         attr = runtime.get_tensor_attr(0)
         scale = float(attr.scale)
         zp = int(attr.zp)
-    except Exception:  # noqa: BLE001 - интроспекция toolkit, деградируем мягко
+    except Exception:
         return None
     if scale <= 0:
         return None
@@ -512,9 +511,7 @@ def recognize_on_device(
             print(f"--> init_runtime(target={target}, device_id={device_id})...")
         ret = rknn.init_runtime(target=target, device_id=device_id)
         if ret != 0:
-            raise RuntimeError(
-                f"Ошибка init_runtime(target={target}, device_id={device_id})"
-            )
+            raise RuntimeError(f"Ошибка init_runtime(target={target}, device_id={device_id})")
 
         sample_input = _prepare_device_input(
             mel,
@@ -618,7 +615,7 @@ def evaluate_recognition(
     case_details: list[dict] = []
     exact_matches = 0
 
-    for index, case in enumerate(cases):
+    for case in cases:
         hypothesis = recognize_fn(case.wav_path)
         reference = case.text
         is_exact = hypothesis.strip() == reference.strip()
@@ -648,8 +645,7 @@ def evaluate_recognition(
         failures.append(f"CER {cer_value:.4f} превышает порог {max_cer}")
     if min_exact_match is not None and exact_match_rate < min_exact_match:
         failures.append(
-            f"Доля точных совпадений {exact_match_rate:.4f} ниже порога "
-            f"{min_exact_match}"
+            f"Доля точных совпадений {exact_match_rate:.4f} ниже порога {min_exact_match}"
         )
 
     return RecognitionReport(

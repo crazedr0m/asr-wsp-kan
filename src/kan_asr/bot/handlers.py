@@ -74,7 +74,7 @@ def convert_ogg_to_wav(ogg_path: str, wav_path: str) -> bool:
     ]
     try:
         subprocess.run(cmd, check=True, capture_output=True)
-    except subprocess.CalledProcessError as e:  # noqa: PERF203
+    except subprocess.CalledProcessError as e:
         logger.error("ffmpeg завершился с ошибкой: %s", e.stderr.decode(errors="ignore"))
         return False
     return True
@@ -101,9 +101,7 @@ def save_voice_sample(ogg_bytes: bytes, user_id: int, message_id: int) -> str:
             os.remove(tmp_ogg)
 
     if not ok:
-        raise RuntimeError(
-            "Не удалось конвертировать голосовое сообщение в WAV (проверьте ffmpeg)"
-        )
+        raise RuntimeError("Не удалось конвертировать голосовое сообщение в WAV (проверьте ffmpeg)")
 
     logger.info("Сохранён голосовой сэмпл: %s", wav_path)
     return f"wavs/{base}.wav"
@@ -121,12 +119,14 @@ def count_confirmed_samples() -> int:
     meta_path = os.path.join(str(resolver.real), "metadata.csv")
     if not os.path.exists(meta_path):
         return 0
-    with open(meta_path, "r", encoding="utf-8") as f:
+    with open(meta_path, encoding="utf-8") as f:
         lines = [ln for ln in f if ln.strip() and not ln.startswith("filename")]
     return len(lines)
 
 
-def handle_voice(ogg_bytes: bytes, user_id: int, message_id: int, recognized_text: str = "") -> dict:
+def handle_voice(
+    ogg_bytes: bytes, user_id: int, message_id: int, recognized_text: str = ""
+) -> dict:
     """
     Полный цикл обработки голосового сообщения.
 

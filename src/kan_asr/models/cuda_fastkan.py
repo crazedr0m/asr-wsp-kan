@@ -54,7 +54,7 @@ _cuda_ext = None
 
 def get_cuda_ext():
     """JIT-компилирует и кэширует CUDA-расширение при первом вызове."""
-    global _cuda_ext
+    global _cuda_ext  # noqa: PLW0603 — ленивый кэш JIT-расширения на уровне модуля
     if _cuda_ext is None:
         if _load_ext is None:
             raise RuntimeError(

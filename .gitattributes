@@ -1,0 +1,43 @@
+# Нормализация переводов строк: в репозитории — LF, в рабочей копии — LF.
+* text=auto eol=lf
+
+# Явно текстовые файлы
+*.py    text eol=lf
+*.pyi   text eol=lf
+*.toml  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.cfg   text eol=lf
+*.ini   text eol=lf
+Makefile text eol=lf
+
+# C/C++/CUDA
+*.c     text eol=lf
+*.h     text eol=lf
+*.cpp   text eol=lf
+*.hpp   text eol=lf
+*.cu    text eol=lf
+*.cuh   text eol=lf
+CMakeLists.txt text eol=lf
+
+# Бинарные файлы — не трогаем
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.pdf   binary
+*.onnx  binary
+*.pt    binary
+*.pth   binary
+*.bin   binary
+*.rknn  binary
+*.safetensors binary
+*.zip   binary
+*.tar.gz binary
+
+# Языковая статистика: не считать сгенерированное/вендорное
+docs/KAN_ASR_Docs_Markdown/** linguist-documentation
+archive/** linguist-vendored

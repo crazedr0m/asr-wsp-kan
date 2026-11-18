@@ -12,7 +12,7 @@ import torch.nn.functional as F
 
 
 def _find_key(sd: dict, suffix: str):
-    for k in sd.keys():
+    for k in sd:
         if k.endswith(suffix):
             return k
     return None
@@ -47,17 +47,9 @@ def project_mlp_to_fastkan(
     device = kan_layer.grid.device
 
     W1 = whisper_sd[k_fc1_w].to(device)  # [1536, 384]
-    b1 = (
-        whisper_sd[k_fc1_b].to(device)
-        if k_fc1_b
-        else torch.zeros(W1.shape[0], device=device)
-    )
+    b1 = whisper_sd[k_fc1_b].to(device) if k_fc1_b else torch.zeros(W1.shape[0], device=device)
     W2 = whisper_sd[k_fc2_w].to(device)  # [384, 1536]
-    b2 = (
-        whisper_sd[k_fc2_b].to(device)
-        if k_fc2_b
-        else torch.zeros(W2.shape[0], device=device)
-    )
+    b2 = whisper_sd[k_fc2_b].to(device) if k_fc2_b else torch.zeros(W2.shape[0], device=device)
 
     C_in = kan_layer.in_channels
     C_out = kan_layer.out_channels

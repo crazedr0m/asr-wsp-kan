@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Тесты Weight-Space Programming (src/kan_asr/wsp/)."""
 
 import os

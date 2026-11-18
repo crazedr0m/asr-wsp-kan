@@ -1,13 +1,14 @@
 # Виртуальное окружение
-venv/
-.venv/
-env/
+/venv/
+/.venv/
+/env/
 .env
 
-# Данные и артефакты (не в git)
-data/
-artifacts/
-cache/
+# Данные и артефакты (не в git) — только в корне проекта,
+# чтобы не игнорировать код пакета src/kan_asr/data/
+/data/
+/artifacts/
+/cache/
 __pycache__/
 *.pyc
 *.pyo
@@ -17,14 +18,15 @@ __pycache__/
 
 # Сборка пакета и кэши инструментов
 *.egg-info/
-build/
-dist/
+/build/
+/dist/
 .eggs/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
-htmlcov/
+/coverage.xml
+/htmlcov/
 
 # Скачанные и обученные модели
 *.onnx
@@ -52,7 +54,7 @@ htmlcov/
 
 # Логирование
 *.log
-logs/
+/logs/
 
 # OS
 .DS_Store

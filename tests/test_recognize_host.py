@@ -47,8 +47,7 @@ def _require_checkpoint(checkpoint_path: str) -> None:
     """Пропускает тест, если чекпоинт отсутствует."""
     if not os.path.exists(checkpoint_path):
         pytest.skip(
-            f"Чекпоинт не найден: {checkpoint_path}. "
-            "Сначала обучите модель (scripts/train.py)"
+            f"Чекпоинт не найден: {checkpoint_path}. Сначала обучите модель (scripts/train.py)"
         )
 
 
@@ -118,9 +117,7 @@ def test_load_recognition_cases_is_deterministic():
     """Отбор кейсов детерминирован."""
     first = load_recognition_cases(n=2)
     second = load_recognition_cases(n=2)
-    assert [(c.wav_path, c.text) for c in first] == [
-        (c.wav_path, c.text) for c in second
-    ]
+    assert [(c.wav_path, c.text) for c in first] == [(c.wav_path, c.text) for c in second]
 
 
 # --- E2E на хосте ----------------------------------------------------------
@@ -139,9 +136,7 @@ def test_recognize_host_smoke(checkpoint_path, recognition_cases):
 
 
 @pytest.mark.recognition
-def test_recognize_host_exact_match(
-    checkpoint_path, recognition_cases, min_exact_match
-):
+def test_recognize_host_exact_match(checkpoint_path, recognition_cases, min_exact_match):
     """
     Распознанный текст совпадает с эталонным текстом тестовой фразы.
 
@@ -151,8 +146,7 @@ def test_recognize_host_exact_match(
     """
     if not _strict_enabled():
         pytest.skip(
-            f"Строгий gate отключён; включите {STRICT_ENV}=1 для проверки "
-            "точного совпадения"
+            f"Строгий gate отключён; включите {STRICT_ENV}=1 для проверки точного совпадения"
         )
     _require_checkpoint(checkpoint_path)
     _require_cases(recognition_cases)
@@ -173,9 +167,7 @@ def test_recognize_host_exact_match(
 def test_recognize_host_cer(checkpoint_path, recognition_cases, max_cer):
     """CER распознавания на хосте не выше порога (строгий gate)."""
     if not _strict_enabled():
-        pytest.skip(
-            f"Строгий gate отключён; включите {STRICT_ENV}=1 для проверки CER"
-        )
+        pytest.skip(f"Строгий gate отключён; включите {STRICT_ENV}=1 для проверки CER")
     _require_checkpoint(checkpoint_path)
     _require_cases(recognition_cases)
 
@@ -186,6 +178,5 @@ def test_recognize_host_cer(checkpoint_path, recognition_cases, max_cer):
     )
 
     assert report.cer <= max_cer, (
-        f"CER {report.cer:.4f} превышает порог {max_cer}. "
-        f"Детали: {report.to_dict()['cases']}"
+        f"CER {report.cer:.4f} превышает порог {max_cer}. Детали: {report.to_dict()['cases']}"
     )

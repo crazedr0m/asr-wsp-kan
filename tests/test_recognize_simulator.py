@@ -31,9 +31,7 @@ from kan_asr.utils.paths import resolver
 
 STRICT_ENV = "KAN_ASR_STRICT_RECOGNITION"
 # Насколько текст симулятора может отличаться от текста хоста (CER между ними)
-DEFAULT_SIM_HOST_MAX_CER = float(
-    os.environ.get("KAN_ASR_SIM_HOST_MAX_CER", "0.5")
-)
+DEFAULT_SIM_HOST_MAX_CER = float(os.environ.get("KAN_ASR_SIM_HOST_MAX_CER", "0.5"))
 
 
 def _strict_enabled() -> bool:
@@ -57,10 +55,7 @@ def _require_artifacts(onnx_path: str, calib_path: str) -> None:
             "Сначала выполните make export (scripts/export_onnx.py)"
         )
     if not os.path.exists(calib_path):
-        pytest.skip(
-            f"Калибровочный датасет не найден: {calib_path}. "
-            "Сначала выполните make calib"
-        )
+        pytest.skip(f"Калибровочный датасет не найден: {calib_path}. Сначала выполните make calib")
 
 
 def _require_cases(recognition_cases) -> None:
@@ -112,8 +107,7 @@ def test_recognize_simulator_matches_host(
     _require_cases(recognition_cases)
     if not os.path.exists(checkpoint_path):
         pytest.skip(
-            f"Чекпоинт хоста не найден: {checkpoint_path}. "
-            "Нужен для сравнения с симулятором"
+            f"Чекпоинт хоста не найден: {checkpoint_path}. Нужен для сравнения с симулятором"
         )
 
     host_texts: list[str] = []
@@ -132,9 +126,7 @@ def test_recognize_simulator_matches_host(
 
 
 @pytest.mark.recognition
-def test_recognize_simulator_exact_match(
-    onnx_path, calib_path, recognition_cases, min_exact_match
-):
+def test_recognize_simulator_exact_match(onnx_path, calib_path, recognition_cases, min_exact_match):
     """Точное совпадение распознанного текста с эталоном в симуляторе (строгий gate)."""
     if not _strict_enabled():
         pytest.skip(
@@ -161,9 +153,7 @@ def test_recognize_simulator_exact_match(
 def test_recognize_simulator_cer(onnx_path, calib_path, recognition_cases, max_cer):
     """CER распознавания в симуляторе не выше порога (строгий gate)."""
     if not _strict_enabled():
-        pytest.skip(
-            f"Строгий gate отключён; включите {STRICT_ENV}=1 для проверки CER"
-        )
+        pytest.skip(f"Строгий gate отключён; включите {STRICT_ENV}=1 для проверки CER")
     _require_rknn()
     _require_artifacts(onnx_path, calib_path)
     _require_cases(recognition_cases)
@@ -175,6 +165,5 @@ def test_recognize_simulator_cer(onnx_path, calib_path, recognition_cases, max_c
     )
 
     assert report.cer <= max_cer, (
-        f"CER {report.cer:.4f} превышает порог {max_cer}. "
-        f"Детали: {report.to_dict()['cases']}"
+        f"CER {report.cer:.4f} превышает порог {max_cer}. Детали: {report.to_dict()['cases']}"
     )

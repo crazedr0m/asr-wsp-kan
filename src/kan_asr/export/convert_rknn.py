@@ -69,7 +69,7 @@ def _evaluate_after_conversion(
             recognize_rknn_simulator,
             save_recognition_report,
         )
-    except Exception as exc:  # noqa: BLE001 - защитная ветка (не роняем конвертацию)
+    except Exception as exc:
         print(f"[WARN] Eval распознавания недоступен: {exc}")
         return
 
@@ -89,7 +89,7 @@ def _evaluate_after_conversion(
             ),
             verbose=False,
         )
-    except Exception as exc:  # noqa: BLE001 - защитная ветка (не роняем конвертацию)
+    except Exception as exc:
         print(f"[WARN] Eval распознавания INT8 не удался: {exc}")
         return
 
@@ -120,7 +120,7 @@ def convert_onnx_to_rknn(
     except ImportError as exc:  # pragma: no cover - зависит от окружения
         raise ImportError(
             "Не найден пакет 'rknn-toolkit2'. Установите его отдельно:\n"
-            "    pip install -e \".[rknn]\"\n"
+            '    pip install -e ".[rknn]"\n'
             "или\n"
             "    pip install -r requirements-optional.txt"
         ) from exc

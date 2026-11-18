@@ -27,11 +27,9 @@ except ImportError:
 from kan_asr.utils.paths import resolver
 
 # Пропуск всего модуля, если rknn-toolkit2 не установлен
-rknn = pytest.importorskip(
-    "rknn", reason="rknn-toolkit2 не установлен (pip install -e '.[rknn]')"
-)
+rknn = pytest.importorskip("rknn", reason="rknn-toolkit2 не установлен (pip install -e '.[rknn]')")
 
-from kan_asr.export.verify_rknn import (
+from kan_asr.export.verify_rknn import (  # noqa: E402 — импорт после importorskip
     DEFAULT_MAX_MEMORY_MB,
     DEFAULT_MAX_SIZE_MB,
     DEFAULT_MIN_COSINE,
@@ -53,8 +51,7 @@ def _require_artifacts():
     """Пропускает тест, если нет ONNX-модели или калибровочного датасета."""
     if not os.path.exists(_onnx_path()):
         pytest.skip(
-            f"ONNX-модель не найдена: {_onnx_path()}. "
-            "Сначала выполните scripts/export_onnx.py"
+            f"ONNX-модель не найдена: {_onnx_path()}. Сначала выполните scripts/export_onnx.py"
         )
     if not os.path.exists(_calib_path()):
         pytest.skip(
@@ -128,16 +125,12 @@ def test_verify_rknn_simulator():
     )
 
     assert result.size_ok, (
-        f"Размер .rknn {result.rknn_size_mb:.3f} МБ превышает "
-        f"лимит {DEFAULT_MAX_SIZE_MB} МБ"
+        f"Размер .rknn {result.rknn_size_mb:.3f} МБ превышает лимит {DEFAULT_MAX_SIZE_MB} МБ"
     )
     assert result.cosine_similarity >= DEFAULT_MIN_COSINE, (
-        f"Косинусное сходство {result.cosine_similarity:.6f} ниже порога "
-        f"{DEFAULT_MIN_COSINE}"
+        f"Косинусное сходство {result.cosine_similarity:.6f} ниже порога {DEFAULT_MIN_COSINE}"
     )
-    assert result.output_shape == (1, 35, 1, 50), (
-        f"Неожиданная форма выхода: {result.output_shape}"
-    )
+    assert result.output_shape == (1, 35, 1, 50), f"Неожиданная форма выхода: {result.output_shape}"
     if result.memory_ok is not None:
         assert result.memory_ok, (
             f"Пиковая память {result.peak_memory_mb:.2f} МБ превышает "

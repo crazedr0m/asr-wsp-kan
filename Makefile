@@ -5,9 +5,18 @@
 
 PYTHON ?= ./venv/bin/python
 PIP    ?= ./venv/bin/pip
+RUFF   ?= ./venv/bin/ruff
+MYPY   ?= ./venv/bin/mypy
+BANDIT ?= ./venv/bin/bandit
+XENON  ?= ./venv/bin/xenon
+VULTURE ?= ./venv/bin/vulture
+INTERROGATE ?= ./venv/bin/interrogate
+PIP_AUDIT ?= ./venv/bin/pip-audit
+PRECOMMIT ?= ./venv/bin/pre-commit
 
 .PHONY: help data wsp train export rknn verify-rknn bench-rknn adb-devices bot \
-	recognize-host recognize-sim recognize-board test test-recognition test-hardware clean install
+	recognize-host recognize-sim recognize-board test test-recognition test-hardware clean install \
+	lint format typecheck security complexity test-cov pre-commit check ci
 
 help:
 	@echo "Доступные цели:"
@@ -26,6 +35,18 @@ help:
 	@echo "  test      — запуск тестов"
 	@echo "  test-recognition — E2E-тесты распознавания (метка recognition)"
 	@echo "  test-hardware — тесты на подключённой плате (метка hardware)"
+	@echo ""
+	@echo "Качество кода:"
+	@echo "  lint      — Ruff: проверка стиля и ошибок"
+	@echo "  format    — Ruff: автоформатирование и автофиксы"
+	@echo "  typecheck — mypy: статическая типизация"
+	@echo "  security  — bandit + pip-audit + detect-secrets"
+	@echo "  complexity — radon/xenon + vulture + interrogate"
+	@echo "  test-cov  — тесты с покрытием (pytest-cov)"
+	@echo "  pre-commit — прогон всех pre-commit хуков по всем файлам"
+	@echo "  check     — всё сразу: lint + typecheck + test-cov + security + complexity"
+	@echo "  ci        — то же, что check (для CI)"
+	@echo ""
 	@echo "  clean     — удаление временных файлов"
 	@echo "  install   — установка зависимостей"
 
@@ -88,6 +109,51 @@ test-recognition:
 test-hardware:
 	@echo "Тесты на подключённой плате Luckfox..."
 	$(PYTHON) -m pytest tests/ -v -m hardware
+
+# --- Качество кода ---------------------------------------------------------
+
+lint:
+	@echo "Ruff: проверка стиля и ошибок..."
+	$(RUFF) check .
+	$(RUFF) format --check .
+
+format:
+	@echo "Ruff: автоформатирование и автофиксы..."
+	$(RUFF) check --fix .
+	$(RUFF) format .
+
+typecheck:
+	@echo "mypy: статическая типизация..."
+	$(MYPY) src scripts
+
+security:
+	@echo "bandit: статический анализ безопасности (порог: medium)..."
+	$(BANDIT) -c pyproject.toml -r src scripts --severity-level medium
+	@echo "pip-audit: уязвимости в зависимостях..."
+	-$(PIP_AUDIT) -r requirements.txt
+	@echo "detect-secrets: поиск секретов..."
+	$(PRECOMMIT) run detect-secrets --all-files
+
+complexity:
+	@echo "xenon: пороги цикломатической сложности (baseline: E/C/B)..."
+	-$(XENON) --max-absolute E --max-modules C --max-average B src
+	@echo "vulture: поиск мёртвого кода..."
+	-$(VULTURE) src scripts --min-confidence 80
+	@echo "interrogate: покрытие docstring'ами..."
+	$(INTERROGATE) -c pyproject.toml src
+
+test-cov:
+	@echo "Тесты с покрытием..."
+	$(PYTHON) -m pytest tests/ -v
+
+pre-commit:
+	@echo "Прогон pre-commit по всем файлам..."
+	$(PRECOMMIT) run --all-files
+
+check: lint typecheck test-cov security complexity
+	@echo "Все проверки качества пройдены."
+
+ci: check
 
 clean:
 	@echo "Очистка временных файлов..."

@@ -26,9 +26,7 @@ DEFAULT_N_CASES = int(os.environ.get("KAN_ASR_RECOGNITION_CASES", "3"))
 
 def pytest_configure(config):
     """Регистрирует пользовательские метки, чтобы не было предупреждений."""
-    config.addinivalue_line(
-        "markers", "recognition: E2E-тесты распознавания WAV → текст"
-    )
+    config.addinivalue_line("markers", "recognition: E2E-тесты распознавания WAV → текст")
     config.addinivalue_line(
         "markers", "hardware: тесты, требующие подключённой платы Luckfox (ADB)"
     )

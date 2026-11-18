@@ -37,10 +37,29 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  # Линт и форматирование
+  "ruff>=0.6",
+  # Типизация
+  "mypy>=1.10",
+  # Тесты и покрытие
   "pytest>=7.0",
-  "ruff>=0.1",
-  "mypy>=1.0",
-  "black>=23.0",
+  "pytest-cov>=5.0",
+  "pytest-xdist>=3.5",
+  "pytest-timeout>=2.3",
+  "pytest-randomly>=3.15",
+  "pytest-sugar>=1.0",
+  # Безопасность
+  "bandit>=1.7",
+  "pip-audit>=2.7",
+  "detect-secrets>=1.5",
+  # Сложность и мейнтейнабилити
+  "radon>=6.0",
+  "xenon>=0.9",
+  "vulture>=2.11",
+  "interrogate>=1.7",
+  # Гигиена коммитов и хуки
+  "pre-commit>=3.0",
+  "commitizen>=3.27",
 ]
 # Тяжёлые/платформо-зависимые зависимости — только по требованию
 rknn = [
@@ -68,18 +87,248 @@ wsp-init = "scripts.wsp_init:main"
 where = ["src", "."]
 include = ["kan_asr*", "scripts*"]
 
+# ---------------------------------------------------------------------------
+# Ruff — единый линтер + форматтер (заменяет black, isort, flake8+plugins,
+# pyupgrade, pydocstyle). Конфигурация — часть «мягкого старта»: правила
+# включены широко, шум для легаси-зон точечно заглушен (см. per-file-ignores
+# и раздел «Baseline» в docs/quality.md).
+# ---------------------------------------------------------------------------
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+src = ["src", "tests", "scripts", "csrc"]
+extend-exclude = [
+  "archive",
+  "venv",
+  ".venv",
+  "build",
+  "dist",
+  "data",
+  "artifacts",
+]
 
+[tool.ruff.lint]
+select = [
+  "E4", "E7", "E9",     # pycodestyle: синтаксические/логические ошибки (E501 не нужен — длина строки у форматтера)
+  "W",                  # pycodestyle: предупреждения (пробелы, переводы строк)
+  "F",                  # pyflakes: неиспользуемые импорты/переменные, undefined names
+  "I",                  # isort: порядок импортов
+  "N",                  # pep8-naming
+  "UP",                 # pyupgrade: синтаксис под target-version
+  "B",                  # flake8-bugbear: частые баги
+  "C4",                 # flake8-comprehensions
+  "SIM",                # flake8-simplify
+  "PT",                 # flake8-pytest-style
+  "RUF",                # правила самого ruff
+  "S",                  # flake8-bandit: безопасность
+  "T20",                # flake8-print: print() в библиотечном коде
+  "ERA",                # eradicate: закомментированный код
+  "PLW", "PLE",         # pylint: предупреждения и ошибки
+  "ISC",                # implicit string concatenation
+  "PIE",                # misc-правила
+]
+
+ignore = [
+  # Проект русскоязычный: кириллица в docstring/комментариях/строках — это
+  # осознанный текст, а не «неоднозначный» Unicode-символ.
+  "RUF001", "RUF002", "RUF003",
+  # ML-код: N, M, K, B, T, L — общепринятые имена тензорных размерностей.
+  "N806",
+  # `import torch.nn.functional as F` — стандартная идиома PyTorch.
+  "N812",
+  # Дублирует mypy-проверку no_implicit_optional (см. [tool.mypy]).
+  "RUF013",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Тесты: assert — это и есть механизм проверки; print допустим для отладки;
+# составные assert и широкий pytest.raises — осознанная практика.
+"tests/**/*.py" = ["S101", "T201", "PT018", "PT011"]
+# CLI-скрипты — тонкие обёртки, печатают прогресс в stdout.
+"scripts/**/*.py" = ["T201"]
+# C++-обвязка и бенчмарки: скрипт-стиль, печать и assert допустимы.
+"csrc/**/*.py" = ["S101", "T201"]
+# Модули, которые де-факто являются CLI-интерфейсами (прогресс в stdout).
+"src/kan_asr/export/*.py" = ["T201"]
+"src/kan_asr/inference/recognize.py" = ["T201"]
+"src/kan_asr/wsp/initialize.py" = ["T201"]
+"src/kan_asr/data/generate.py" = ["T201", "S311"]  # S311: random для синтетических данных
+"src/kan_asr/data/augment.py" = ["S311"]           # S311: random для аугментаций
+# Публичные имена классов зафиксированы в чекпоинтах и внешнем коде —
+# переименование под CapWords нарушит обратную совместимость.
+"src/kan_asr/models/tiny_kan_asr.py" = ["N801"]
+# subprocess с фиксированными списками аргументов (adb, бинарники RKNN).
+"src/kan_asr/export/verify_rknn.py" = ["T201", "S603"]
+"src/kan_asr/bot/handlers.py" = ["S603"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["kan_asr", "scripts"]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true
+
+# ---------------------------------------------------------------------------
+# mypy — постепенное ужесточение типизации. Базовый режим намеренно мягкий
+# («мягкий старт»): строгие проверки включаются по модулям через overrides,
+# а известный техдолг зафиксирован как baseline (см. docs/quality.md, ratchet).
+# ---------------------------------------------------------------------------
 [tool.mypy]
 python_version = "3.10"
-warn_return_any = true
 warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+check_untyped_defs = true
+show_error_codes = true
+pretty = true
+exclude = [
+  "^archive/",
+  "^build/",
+  "^dist/",
+  "^venv/",
+  "^\\.venv/",
+]
 
+# Строгие модули ядра — эталон, к которому постепенно подтягиваем остальные.
+[[tool.mypy.overrides]]
+module = [
+  "kan_asr.data.mel",
+  "kan_asr.data.vocab",
+  "kan_asr.training.ctc",
+  "kan_asr.training.metrics",
+  "kan_asr.models.kan_layers",
+]
+disallow_untyped_defs = true
+warn_return_any = true
+
+# Третьи стороны без стабов (нет py.typed) — отсутствие типов не считаем ошибкой.
+[[tool.mypy.overrides]]
+module = [
+  "scipy.*",
+  "rknn.*",
+  "onnxruntime",
+  "onnx.*",
+  "piper.*",
+]
+ignore_missing_imports = true
+
+# --- Baseline: известный техдолг типизации (ratchet-цель) -------------------
+# Эти модули пока не проходят строгий режим. Глушим только те коды, что реально
+# встречаются, чтобы новые ошибки других типов всё равно ловились.
+[[tool.mypy.overrides]]
+module = [
+  "kan_asr.training.train",
+  "kan_asr.bot.app",
+  "kan_asr.inference.recognize",
+  "kan_asr.data.generate",
+  "kan_asr.training.alignment",
+  "kan_asr.models.cuda_fastkan",
+  "kan_asr.export.verify_rknn",
+  "kan_asr.export.export_onnx",
+  "kan_asr.utils.logging",
+  "kan_asr.utils.paths",
+  "kan_asr.utils.config",
+  "kan_asr.models.whisper_teacher",
+  "kan_asr.models.tiny_kan_asr",
+]
+disable_error_code = [
+  "assignment",
+  "no-any-return",
+  "attr-defined",
+  "arg-type",
+  "var-annotated",
+  "misc",
+  "call-overload",
+]
+
+# ---------------------------------------------------------------------------
+# pytest — быстрый локальный цикл по умолчанию: тяжёлые метки (recognition,
+# hardware) исключены, включены покрытие, параллельный прогон и таймаут.
+# Явный `-m recognition` в командной строке переопределяет фильтр из addopts.
+# ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = [
+  "-m", "not recognition and not hardware",
+  "-n", "auto",
+  "--timeout=120",
+  "--strict-markers",
+  "--strict-config",
+  "--cov=src/kan_asr",
+  "--cov-report=term-missing",
+  "--cov-report=xml",
+  "--cov-fail-under=40",
+]
 markers = [
   "recognition: E2E-тесты распознавания WAV → текст",
   "hardware: тесты, требующие подключённой платы Luckfox (ADB)",
 ]
+
+# ---------------------------------------------------------------------------
+# coverage — ветвление включено; строки, которые не имеет смысла покрывать,
+# исключены из знаменателя.
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+branch = true
+source = ["src/kan_asr"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_also = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+  "raise NotImplementedError",
+  "@overload",
+  "if sys.version_info",
+]
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+# ---------------------------------------------------------------------------
+# bandit — статический анализ безопасности. Тесты и скрипты исключены
+# (assert/subprocess там ожидаемы), низкоуровневые предупреждения не блокируют.
+# ---------------------------------------------------------------------------
+[tool.bandit]
+exclude_dirs = ["tests", "archive", "venv", ".venv", "build", "dist", "csrc"]
+skips = [
+  "B101",  # assert — допустим в тестах/скриптах
+  "B311",  # random — для синтетических данных и аугментаций, не для криптографии
+  "B614",  # torch.load — загрузка собственных доверенных чекпоинтов
+]
+
+# ---------------------------------------------------------------------------
+# interrogate — покрытие docstring. Мягкий порог на старте (ratchet-цель).
+# ---------------------------------------------------------------------------
+[tool.interrogate]
+ignore-init-module = true
+ignore-init-method = true
+ignore-magic = true
+ignore-private = true
+ignore-property-decorators = true
+ignore-nested-functions = true
+ignore-module = false
+fail-under = 60
+exclude = ["tests", "archive", "venv", ".venv", "build", "dist", "csrc", "scripts"]
+
+# ---------------------------------------------------------------------------
+# commitizen — conventional commits (необязательный gate, см. docs/quality.md).
+# ---------------------------------------------------------------------------
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+tag_format = "v$version"
+update_changelog_on_bump = true

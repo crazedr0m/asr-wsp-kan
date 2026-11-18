@@ -20,14 +20,14 @@
 его можно безопасно импортировать в окружении без NPU-тулчейна.
 """
 
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 import json
 import os
 import re
 import shutil
 import subprocess
 import time
-from collections.abc import Sequence
-from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -165,9 +165,7 @@ class VerificationResult:
             f"Форма выхода:    {self.output_shape}",
         ]
         if self.peak_memory_mb is not None:
-            lines.append(
-                f"Пиковая память:  {self.peak_memory_mb:.2f} МБ (ok={self.memory_ok})"
-            )
+            lines.append(f"Пиковая память:  {self.peak_memory_mb:.2f} МБ (ok={self.memory_ok})")
         if self.accuracy_analysis_dir:
             lines.append(f"Accuracy analysis: {self.accuracy_analysis_dir}")
         if self.performance is not None:
@@ -189,7 +187,7 @@ def _import_rknn():
     except ImportError as exc:  # pragma: no cover - зависит от окружения
         raise ImportError(
             "Не найден пакет 'rknn-toolkit2'. Установите его отдельно:\n"
-            "    pip install -e \".[rknn]\"\n"
+            '    pip install -e ".[rknn]"\n'
             "или\n"
             "    pip install -r requirements-optional.txt"
         ) from exc
@@ -202,7 +200,7 @@ def _toolkit_version() -> str | None:
         from importlib.metadata import version
 
         return version("rknn-toolkit2")
-    except Exception:  # noqa: BLE001  # pragma: no cover - зависит от окружения
+    except Exception:  # pragma: no cover - зависит от окружения
         return None
 
 
@@ -211,9 +209,7 @@ def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     flat_a = np.asarray(a, dtype=np.float64).ravel()
     flat_b = np.asarray(b, dtype=np.float64).ravel()
     if flat_a.size != flat_b.size:
-        raise ValueError(
-            f"Размеры выходов не совпадают: {flat_a.size} != {flat_b.size}"
-        )
+        raise ValueError(f"Размеры выходов не совпадают: {flat_a.size} != {flat_b.size}")
     norm_a = float(np.linalg.norm(flat_a))
     norm_b = float(np.linalg.norm(flat_b))
     if norm_a == 0.0 or norm_b == 0.0:
@@ -235,20 +231,15 @@ def _align_output(rknn_out: np.ndarray, reference: np.ndarray) -> np.ndarray:
     if rknn_out.size == reference.size:
         return rknn_out.reshape(reference.shape)
     raise ValueError(
-        "Форма выхода эмулятора несовместима с ONNX: "
-        f"{rknn_out.shape} vs {reference.shape}"
+        f"Форма выхода эмулятора несовместима с ONNX: {rknn_out.shape} vs {reference.shape}"
     )
 
 
-def _run_onnx(
-    onnx_model: str, sample_input: np.ndarray
-) -> tuple[np.ndarray, tuple[int, ...]]:
+def _run_onnx(onnx_model: str, sample_input: np.ndarray) -> tuple[np.ndarray, tuple[int, ...]]:
     """Прогон входа через ONNX Runtime (float32) на CPU."""
     import onnxruntime as ort
 
-    session = ort.InferenceSession(
-        onnx_model, providers=["CPUExecutionProvider"]
-    )
+    session = ort.InferenceSession(onnx_model, providers=["CPUExecutionProvider"])
     input_meta = session.get_inputs()[0]
     output_name = session.get_outputs()[0].name
     outputs = session.run([output_name], {input_meta.name: sample_input})
@@ -282,9 +273,7 @@ def _parse_peak_memory_mb(report: str | dict | None) -> float | None:
                 total = float(value)
                 break
         if total is None:
-            numeric = [
-                float(v) for v in report.values() if isinstance(v, (int, float))
-            ]
+            numeric = [float(v) for v in report.values() if isinstance(v, (int, float))]
             if not numeric:
                 return None
             total = max(numeric)
@@ -299,9 +288,7 @@ def _parse_peak_memory_mb(report: str | dict | None) -> float | None:
         matches = pattern.findall(line)
         if not matches:
             continue
-        values = [
-            float(value) * _MEMORY_UNITS[unit.upper()] for value, unit in matches
-        ]
+        values = [float(value) * _MEMORY_UNITS[unit.upper()] for value, unit in matches]
         lowered = line.lower()
         if any(key in lowered for key in ("total", "peak", "memory", "max")):
             prioritized.extend(values)
@@ -374,9 +361,7 @@ def _adb_devices(adb: str | None = None) -> list[str]:
     """
     adb = adb or _adb_binary()
     try:
-        output = subprocess.check_output(
-            [adb, "devices"], text=True, stderr=subprocess.STDOUT
-        )
+        output = subprocess.check_output([adb, "devices"], text=True, stderr=subprocess.STDOUT)
     except (subprocess.CalledProcessError, OSError) as exc:
         raise RuntimeError(f"Не удалось выполнить 'adb devices': {exc}") from exc
 
@@ -413,10 +398,7 @@ def _ensure_device(device_id: str | None = None, adb: str | None = None) -> str:
             "Luckfox Pico Plus по USB и проверьте 'adb devices'."
         )
     if len(devices) > 1:
-        raise RuntimeError(
-            "Подключено несколько устройств: "
-            f"{devices}. Укажите device_id явно."
-        )
+        raise RuntimeError(f"Подключено несколько устройств: {devices}. Укажите device_id явно.")
     return devices[0]
 
 
@@ -461,9 +443,7 @@ def _start_rknn_server(
     try:
         subprocess.run(cmd, check=True, capture_output=True, text=True)
     except (subprocess.CalledProcessError, OSError) as exc:
-        raise RuntimeError(
-            f"Не удалось запустить rknn_server на плате: {exc}"
-        ) from exc
+        raise RuntimeError(f"Не удалось запустить rknn_server на плате: {exc}") from exc
 
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
@@ -471,8 +451,7 @@ def _start_rknn_server(
             return
         time.sleep(0.3)
     raise RuntimeError(
-        "rknn_server не запустился на плате. Проверьте наличие "
-        f"{server_path} и права (adb shell)."
+        f"rknn_server не запустился на плате. Проверьте наличие {server_path} и права (adb shell)."
     )
 
 
@@ -553,13 +532,9 @@ def benchmark_on_device(
         if verbose:
             print(f"--> init_runtime(target={target}, device_id={device_id})...")
         # eval_mem=True нужен, чтобы rknn.eval_memory() работал на устройстве
-        ret = rknn.init_runtime(
-            target=target, device_id=device_id, eval_mem=True
-        )
+        ret = rknn.init_runtime(target=target, device_id=device_id, eval_mem=True)
         if ret != 0:
-            raise RuntimeError(
-                f"Ошибка init_runtime(target={target}, device_id={device_id})"
-            )
+            raise RuntimeError(f"Ошибка init_runtime(target={target}, device_id={device_id})")
 
         if verbose:
             print(f"--> Прогрев NPU ({warmup} прогонов)...")
@@ -576,7 +551,7 @@ def benchmark_on_device(
         # eval_memory работает только на реальном устройстве (не в симуляторе)
         try:
             memory_report = rknn.eval_memory()
-        except Exception as exc:  # noqa: BLE001  # pragma: no cover - зависит от версии toolkit
+        except Exception as exc:  # pragma: no cover - зависит от версии toolkit
             memory_report = None
             if verbose:
                 print(f"[WARN] eval_memory на плате недоступен: {exc}")
@@ -591,8 +566,7 @@ def benchmark_on_device(
     failures: list[str] = []
     if max_latency_ms is not None and stats["mean"] > max_latency_ms:
         failures.append(
-            f"Средняя latency {stats['mean']:.2f} мс превышает порог "
-            f"{max_latency_ms} мс"
+            f"Средняя latency {stats['mean']:.2f} мс превышает порог {max_latency_ms} мс"
         )
     if min_fps is not None and fps < min_fps:
         failures.append(f"FPS {fps:.2f} ниже порога {min_fps}")
@@ -618,16 +592,11 @@ def benchmark_on_device(
     )
 
     if verbose:
-        print(
-            f"--> Плата: latency mean={stats['mean']:.2f} мс, "
-            f"FPS={fps:.2f}, RTF={rtf:.4f}"
-        )
+        print(f"--> Плата: latency mean={stats['mean']:.2f} мс, FPS={fps:.2f}, RTF={rtf:.4f}")
     return result
 
 
-def save_perf_report(
-    result: PerformanceResult, path: str | None = None
-) -> str:
+def save_perf_report(result: PerformanceResult, path: str | None = None) -> str:
     """
     Сохраняет JSON-отчёт бенчмарка.
 
@@ -763,9 +732,7 @@ def verify_rknn_simulator(
             if verbose:
                 print("--> Accuracy analysis (float32 vs INT8)...")
             os.makedirs(accuracy_output_dir, exist_ok=True)
-            ret = rknn.accuracy_analysis(
-                inputs=[sample_input], output_dir=accuracy_output_dir
-            )
+            ret = rknn.accuracy_analysis(inputs=[sample_input], output_dir=accuracy_output_dir)
             if ret != 0:
                 failures.append("accuracy_analysis завершился с ошибкой")
 
@@ -788,7 +755,7 @@ def verify_rknn_simulator(
         if target is not None:
             try:
                 memory_report = rknn.eval_memory()
-            except Exception as exc:  # noqa: BLE001  # pragma: no cover - зависит от версии toolkit
+            except Exception as exc:  # pragma: no cover - зависит от версии toolkit
                 if verbose:
                     print(f"[WARN] eval_memory недоступен: {exc}")
     finally:
@@ -796,10 +763,7 @@ def verify_rknn_simulator(
 
     # Метрики точности
     cosine = _cosine_similarity(reference, rknn_out)
-    diff = np.abs(
-        np.asarray(reference, dtype=np.float64)
-        - np.asarray(rknn_out, dtype=np.float64)
-    )
+    diff = np.abs(np.asarray(reference, dtype=np.float64) - np.asarray(rknn_out, dtype=np.float64))
     max_abs_diff = float(diff.max()) if diff.size else 0.0
     mean_abs_diff = float(diff.mean()) if diff.size else 0.0
 
@@ -807,15 +771,11 @@ def verify_rknn_simulator(
     rknn_size_mb = os.path.getsize(rknn_model) / (1024.0 * 1024.0)
     size_ok = rknn_size_mb <= max_size_mb
     if not size_ok:
-        failures.append(
-            f"Размер .rknn {rknn_size_mb:.3f} МБ превышает лимит {max_size_mb} МБ"
-        )
+        failures.append(f"Размер .rknn {rknn_size_mb:.3f} МБ превышает лимит {max_size_mb} МБ")
 
     # Проверка точности
     if cosine < min_cosine:
-        failures.append(
-            f"Косинусное сходство {cosine:.6f} ниже порога {min_cosine}"
-        )
+        failures.append(f"Косинусное сходство {cosine:.6f} ниже порога {min_cosine}")
 
     # Проверка памяти
     peak_memory_mb = _parse_peak_memory_mb(memory_report)
@@ -824,8 +784,7 @@ def verify_rknn_simulator(
         memory_ok = peak_memory_mb <= max_memory_mb
         if not memory_ok:
             failures.append(
-                f"Пиковая память {peak_memory_mb:.2f} МБ превышает лимит "
-                f"{max_memory_mb} МБ"
+                f"Пиковая память {peak_memory_mb:.2f} МБ превышает лимит {max_memory_mb} МБ"
             )
 
     # Замер на реальной плате (опционально)

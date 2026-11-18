@@ -76,7 +76,8 @@ def run_test():
     bwd_err = (x_ref.grad - x_cuda.grad).abs().max().item()
     print(f"Max Forward Error:  {fwd_err:.2e}")
     print(f"Max Backward Error: {bwd_err:.2e}")
-    assert fwd_err < 1e-4 and bwd_err < 1e-3, "Ошибка расхождения градиентов!"
+    assert fwd_err < 1e-4, "Ошибка расхождения forward-градиентов!"
+    assert bwd_err < 1e-3, "Ошибка расхождения backward-градиентов!"
 
     # 2. Замер скорости и потребления VRAM
     iters = 200

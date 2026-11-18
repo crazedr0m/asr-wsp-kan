@@ -72,10 +72,8 @@ def test_adb_devices_parsing(monkeypatch):
         "\n"
     )
     monkeypatch.setattr(vr, "_adb_binary", lambda: "/usr/bin/adb")
-    monkeypatch.setattr(
-        vr.subprocess, "check_output", lambda *a, **k: output
-    )
-    assert _adb_devices() == ["67c890ed4c2fcc27", "emulator-5554"]
+    monkeypatch.setattr(vr.subprocess, "check_output", lambda *a, **k: output)
+    assert _adb_devices() == ["67c890ed4c2fcc27", "emulator-5554"]  # pragma: allowlist secret
 
 
 def test_adb_devices_empty(monkeypatch):

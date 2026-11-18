@@ -71,6 +71,32 @@ python scripts/convert_rknn.py
 python scripts/run_bot.py
 ```
 
+## 🧪 Разработка
+
+Установка инструментов разработки и pre-commit:
+
+```bash
+pip install -r requirements-dev.txt
+pip install -e .
+./venv/bin/pre-commit install --install-hooks
+```
+
+Основные цели Makefile для контроля качества:
+
+```bash
+make lint        # Ruff: проверка стиля и ошибок
+make format      # Ruff: автоформатирование и автофиксы
+make typecheck   # mypy: статическая типизация
+make test-cov    # pytest + покрытие
+make security    # bandit + pip-audit + detect-secrets
+make complexity  # xenon + vulture + interrogate
+make check       # всё сразу (lint + typecheck + test-cov + security + complexity)
+```
+
+Контур построен по принципу «мягкого старта»: существующий техдолг зафиксирован
+как baseline, а новые изменения проверяются строго. Подробности — в
+[docs/quality.md](docs/quality.md).
+
 ## 📖 Документация
 
 - [Техническое задание](docs/KAN_ASR_Docs_Markdown/TZ_KAN_ASR_Luckfox.md)
@@ -80,6 +106,7 @@ python scripts/run_bot.py
 - [CKA-выравнивание](docs/alignment.md)
 - [Комплект запуска (pipeline bundle)](docs/pipeline_bundle.md)
 - [Настройка окружения](docs/setup.md)
+- [Контур качества кода](docs/quality.md)
 - [CUDA-ядро](csrc/README.md)
 - [Edge-инференс на Luckfox](edge/README.md)
 

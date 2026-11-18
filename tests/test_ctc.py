@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Тесты CTC-декодера и метрик (src/kan_asr/training/ctc.py, metrics.py)."""
 
 import os

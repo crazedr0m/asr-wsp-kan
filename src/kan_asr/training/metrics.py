@@ -27,7 +27,7 @@ def cer(references: list[str], hypotheses: list[str]) -> float:
     """Character Error Rate (суммарный по корпусу)."""
     total_dist = 0
     total_len = 0
-    for ref, hyp in zip(references, hypotheses):
+    for ref, hyp in zip(references, hypotheses, strict=True):
         total_dist += _edit_distance(list(ref), list(hyp))
         total_len += len(ref)
     return total_dist / max(1, total_len)
@@ -37,7 +37,7 @@ def wer(references: list[str], hypotheses: list[str]) -> float:
     """Word Error Rate (суммарный по корпусу)."""
     total_dist = 0
     total_len = 0
-    for ref, hyp in zip(references, hypotheses):
+    for ref, hyp in zip(references, hypotheses, strict=True):
         ref_words = ref.split()
         hyp_words = hyp.split()
         total_dist += _edit_distance(ref_words, hyp_words)

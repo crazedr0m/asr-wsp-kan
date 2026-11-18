@@ -1,16 +1,16 @@
 """KAN-ASR training модуль."""
 
-from .alignment import linear_cka_loss, WhisperKANAlignmentLoss
-from .ctc import greedy_ctc_decode, ctc_log_probs
+from .alignment import WhisperKANAlignmentLoss, linear_cka_loss
+from .ctc import ctc_log_probs, greedy_ctc_decode
 from .metrics import cer, wer
 from .train import train
 
 __all__ = [
-    "linear_cka_loss",
     "WhisperKANAlignmentLoss",
-    "greedy_ctc_decode",
-    "ctc_log_probs",
     "cer",
-    "wer",
+    "ctc_log_probs",
+    "greedy_ctc_decode",
+    "linear_cka_loss",
     "train",
+    "wer",
 ]

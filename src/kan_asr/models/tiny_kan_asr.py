@@ -17,7 +17,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .kan_layers import PureFastKANLayer, PureChebyKANLayer, NPUFriendlyMoEKAN  # noqa: F401
+from .kan_layers import NPUFriendlyMoEKAN, PureChebyKANLayer, PureFastKANLayer  # noqa: F401
 
 
 class FastKANConv1x1(nn.Module):
@@ -52,12 +52,10 @@ class FastKANConv1x1(nn.Module):
         self.denom = (grid_max - grid_min) / (num_grids - 1)
 
         self.base_conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
-        self.rbf_conv = nn.Conv2d(
-            in_channels * num_grids, out_channels, kernel_size=1, bias=True
-        )
+        self.rbf_conv = nn.Conv2d(in_channels * num_grids, out_channels, kernel_size=1, bias=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: [B, C, H, T]
+        # Вход: B x C x H x T
         B, C, H, T = x.shape
         base_out = self.base_conv(F.silu(x))
         diff = (x.unsqueeze(2) - self.grid) / self.denom

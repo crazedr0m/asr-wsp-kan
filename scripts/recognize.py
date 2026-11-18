@@ -56,17 +56,19 @@ def _build_recognizer(args):
             verbose=not args.quiet,
         )
     if args.device == "rv1103":
-        return lambda wav: recognize_on_device(
-            wav,
-            rknn_model=args.rknn,
-            target=args.target,
-            device_id=args.device_id,
-            time_frames=args.time_frames,
-            data_format=args.data_format,
-            input_dtype=args.input_dtype,
-            auto_start_server=not args.no_auto_start_server,
-            verbose=not args.quiet,
-        ).text
+        return lambda wav: (
+            recognize_on_device(
+                wav,
+                rknn_model=args.rknn,
+                target=args.target,
+                device_id=args.device_id,
+                time_frames=args.time_frames,
+                data_format=args.data_format,
+                input_dtype=args.input_dtype,
+                auto_start_server=not args.no_auto_start_server,
+                verbose=not args.quiet,
+            ).text
+        )
     raise ValueError(f"Неизвестное устройство: {args.device}")
 
 
@@ -202,9 +204,7 @@ def main():
     if args.wav:
         cases = [RecognitionCase(wav_path=args.wav, text="")]
     else:
-        cases = load_recognition_cases(
-            n=args.cases, data_dir=args.data_dir, offset=args.offset
-        )
+        cases = load_recognition_cases(n=args.cases, data_dir=args.data_dir, offset=args.offset)
         if not cases:
             print(
                 "[ERROR] Не найдено кейсов распознавания. Проверьте metadata.csv "

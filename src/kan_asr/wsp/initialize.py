@@ -4,10 +4,15 @@
 Модуль содержит метод initialize_student для полной инициализации TinyKAN_ASR.
 """
 
+from typing import TYPE_CHECKING
+
 import torch
 
 from .extract import WhisperWeightSpaceProgrammer
 from .project import project_mlp_to_fastkan
+
+if TYPE_CHECKING:
+    from ..models.tiny_kan_asr import TinyKAN_ASR
 
 
 def extract_conv_subspace(
@@ -33,7 +38,7 @@ def extract_conv_subspace(
 
 def initialize_student(
     whisper_sd: dict,
-    student: "TinyKAN_ASR",  # type: ignore - будет импортировано из models
+    student: "TinyKAN_ASR",
     device: str = "cuda",
 ):
     """Полная инициализация TinyKAN_ASR из весов Whisper."""

@@ -149,7 +149,7 @@ class TelegramBot:
                     for update in data.get("result", []):
                         self.offset = update["update_id"] + 1
                         await self._handle_update(update)
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     logger.error("Ошибка polling: %s", e)
                     await asyncio.sleep(3)
 
@@ -160,9 +160,7 @@ def main(token: str = None, finetune_threshold: int = FINETUNE_THRESHOLD) -> Non
     if token is None:
         token = os.environ.get("KAN_ASR_BOT_TOKEN", "")
     if not token:
-        raise RuntimeError(
-            "Не задан токен бота. Установите KAN_ASR_BOT_TOKEN или передайте token."
-        )
+        raise RuntimeError("Не задан токен бота. Установите KAN_ASR_BOT_TOKEN или передайте token.")
     bot = TelegramBot(token, finetune_threshold=finetune_threshold)
     asyncio.run(bot.run())
 

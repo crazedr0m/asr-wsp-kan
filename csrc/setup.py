@@ -7,6 +7,7 @@
     # либо явная сборка в систему:
     cd csrc && python setup.py install
 """
+
 from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 

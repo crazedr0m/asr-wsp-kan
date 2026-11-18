@@ -6,9 +6,9 @@ from .paths import PathResolver, resolver
 
 __all__ = [
     "PathResolver",
-    "resolver",
-    "setup_logging",
+    "get_config_value",
     "get_logger",
     "load_config",
-    "get_config_value",
+    "resolver",
+    "setup_logging",
 ]

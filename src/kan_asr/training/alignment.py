@@ -9,7 +9,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def linear_cka_loss(student_feat: torch.Tensor, teacher_feat: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
+def linear_cka_loss(
+    student_feat: torch.Tensor, teacher_feat: torch.Tensor, eps: float = 1e-6
+) -> torch.Tensor:
     """
     Linear Centered Kernel Alignment (CKA) Loss = 1 - CKA(X, Y).
     Устойчив к разнице размерностей каналов (128 у TinyKAN vs 384 у Whisper).
@@ -101,9 +103,13 @@ class WhisperKANAlignmentLoss(nn.Module):
         if student_model is not None and self.initial_weights:
             for name, param in student_model.named_parameters():
                 if name in self.initial_weights:
-                    anchor_loss = anchor_loss + F.mse_loss(param, self.initial_weights[name].to(param.device))
+                    anchor_loss = anchor_loss + F.mse_loss(
+                        param, self.initial_weights[name].to(param.device)
+                    )
 
-        total_align = 0.5 * (cka_mid + cka_top) + 0.5 * (cos_mid + cos_top) + self.anchor_weight * anchor_loss
+        total_align = (
+            0.5 * (cka_mid + cka_top) + 0.5 * (cos_mid + cos_top) + self.anchor_weight * anchor_loss
+        )
         return {
             "total_align": total_align,
             "cka": 0.5 * (cka_mid + cka_top).detach(),

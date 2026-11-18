@@ -27,9 +27,9 @@ def _read_meta(root: str):
     if not os.path.exists(meta):
         return []
     rows = []
-    with open(meta, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
+    with open(meta, encoding="utf-8") as f:
+        for raw_line in f:
+            line = raw_line.strip()
             if not line or line.startswith("filename"):
                 continue
             parts = line.split("|")
@@ -73,7 +73,9 @@ def build_mixed_dataset(
     combined += [(rel, text, synth_dir) for rel, text in sampled_base]
 
     if not combined:
-        logger.warning("Нет данных для дообучения (real=%d, base=%d)", len(new_rows), len(base_rows))
+        logger.warning(
+            "Нет данных для дообучения (real=%d, base=%d)", len(new_rows), len(base_rows)
+        )
         return None
 
     with open(os.path.join(out_dir, "metadata.csv"), "w", encoding="utf-8") as f:
@@ -86,7 +88,9 @@ def build_mixed_dataset(
                 shutil.copy2(src, dst)
             f.write(f"wavs/{dst_name}|{text}\n")
 
-    logger.info("Смешанный датасет: %d новых + %d базовых -> %s", len(new_rows), len(sampled_base), out_dir)
+    logger.info(
+        "Смешанный датасет: %d новых + %d базовых -> %s", len(new_rows), len(sampled_base), out_dir
+    )
     return out_dir
 
 
@@ -105,7 +109,7 @@ def _measure_exact_match(
             load_recognition_cases,
             recognize_torch,
         )
-    except Exception as exc:  # noqa: BLE001 - защитная ветка (не роняем дообучение)
+    except Exception as exc:
         logger.warning("Eval распознавания недоступен: %s", exc)
         return None
 
@@ -120,7 +124,7 @@ def _measure_exact_match(
             lambda wav: recognize_torch(wav, checkpoint_path),
             verbose=False,
         )
-    except Exception as exc:  # noqa: BLE001 - защитная ветка (не роняем дообучение)
+    except Exception as exc:
         logger.warning("Eval распознавания не удался: %s", exc)
         return None
     return report.exact_match_rate, report.cer
@@ -224,9 +228,7 @@ def _report_finetune_delta(
             delta_cer,
         )
     else:
-        logger.info(
-            "Дообучение: exact-match %.3f | CER %.4f", after_rate, after_cer
-        )
+        logger.info("Дообучение: exact-match %.3f | CER %.4f", after_rate, after_cer)
 
     payload = {
         "base_checkpoint": base_checkpoint,
@@ -247,5 +249,5 @@ def _report_finetune_delta(
         with open(report_path, "w", encoding="utf-8") as handle:
             json.dump(payload, handle, ensure_ascii=False, indent=2)
         logger.info("Отчёт дообучения сохранён: %s", report_path)
-    except Exception as exc:  # noqa: BLE001 - защитная ветка (отчёт не критичен)
+    except Exception as exc:
         logger.warning("Не удалось сохранить отчёт дообучения: %s", exc)

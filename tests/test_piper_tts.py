@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Тест Piper TTS (перенесено из корневого test_piper_tts.py).
 
