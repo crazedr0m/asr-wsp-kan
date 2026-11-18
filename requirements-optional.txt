@@ -8,8 +8,10 @@
 #   pip install -e ".[tts]"    # только генерация датасета (Piper TTS)
 #   pip install -e ".[all]"    # всё
 
-# Конвертация ONNX -> RKNN INT8 (Этап 5, требует x86 Linux + Python 3.8-3.11)
-rknn-toolkit2>=1.5
+# Конвертация ONNX -> RKNN INT8 и замер на плате (Этап 5).
+# Требует x86_64 Linux. Проверено на Python 3.12 (колесо cp312 x86_64).
+# Версия тулчейна должна совпадать с runtime на плате (librknnmrt.so + rknn_server).
+rknn-toolkit2==2.5.0
 
 # Генерация синтетического датасета (Этап 1)
 piper-tts>=0.1

@@ -59,6 +59,7 @@ generate-dataset = "scripts.generate_dataset:main"
 train = "scripts.train:main"
 export-onnx = "scripts.export_onnx:main"
 convert-rknn = "scripts.convert_rknn:main"
+verify-rknn = "scripts.verify_rknn:main"
 run-bot = "scripts.run_bot:main"
 wsp-init = "scripts.wsp_init:main"
 

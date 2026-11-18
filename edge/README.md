@@ -33,6 +33,37 @@ cmake --build build
 ./luckfox_kan_asr tiny_kan_asr_rv1103.rknn
 ```
 
+## Проверка точности INT8 до прошивки
+
+Перед запуском на плате точность квантованной модели проверяется в симуляторе
+NPU на ПК (без физического устройства):
+
+```bash
+python scripts/verify_rknn.py --accuracy-analysis
+```
+
+Скрипт собирает `.rknn`, поднимает эмулятор (`init_runtime(target=None)`),
+сравнивает выход INT8 с ONNX Runtime (float32) по косинусному сходству и
+проверяет лимиты платы: размер `.rknn` ≤ 4 МБ и пиковая память ≤ 64 МБ.
+См. [`docs/setup.md`](../docs/setup.md).
+
+## Замер производительности на подключённой плате (USB/ADB)
+
+Когда Luckfox Pico Plus подключена к хосту по USB, можно измерить реальную
+latency/FPS на NPU, не прошивая устройство:
+
+```bash
+python scripts/verify_rknn.py --list-devices          # проверить ADB
+python scripts/verify_rknn.py --target rv1103 \
+    --warmup 3 --iterations 20 --max-latency-ms 200 --min-fps 5
+# или: make bench-rknn
+```
+
+Скрипт поднимает `rknn_server` на плате, выполняет прогрев и N итераций
+инференса, считает latency/FPS/RTF и пиковую память, сохраняет отчёт в
+`artifacts/rknn/perf_report.json`. Требуется совпадение версий тулчейна на ПК
+и runtime на плате (`rknn-toolkit2==2.5.0` ↔ `librknnmrt.so`/`rknn_server` 2.5.0).
+
 ## Что осталось реализовать
 - Заполнение `mel_input` реальными данными с микрофона (ALSA → FFT → Mel-фильтры).
   Сейчас буфер инициализирован нулями (заглушка `TODO` в коде).

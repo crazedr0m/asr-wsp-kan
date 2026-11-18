@@ -9,6 +9,38 @@ import os
 from ..utils.paths import resolver
 
 
+def build_rknn_model(rknn, onnx_model: str, rknn_model: str, calib_dataset: str):
+    """
+    Настраивает, квантует и экспортирует RKNN-модель в переданный инстанс ``RKNN``.
+
+    Вынесено в отдельную функцию, чтобы её переиспользовали и конвертация
+    (``convert_onnx_to_rknn``), и верификация в симуляторе NPU
+    (``verify_rknn.verify_rknn_simulator``).
+    """
+    # Целевая платформа строго rv1103 (Luckfox Pico Plus)
+    rknn.config(
+        target_platform="rv1103",
+        quantized_dtype="asymmetric_quantized-8",
+        quantized_algorithm="normal",
+    )
+
+    print("--> Загрузка ONNX модели...")
+    ret = rknn.load_onnx(model=onnx_model)
+    if ret != 0:
+        raise RuntimeError("Ошибка загрузки ONNX")
+
+    print("--> Квантование в INT8 и компиляция под NPU RV1103...")
+    ret = rknn.build(do_quantization=True, dataset=calib_dataset)
+    if ret != 0:
+        raise RuntimeError("Ошибка сборки RKNN")
+
+    print("--> Экспорт .rknn файла...")
+    os.makedirs(os.path.dirname(rknn_model) or ".", exist_ok=True)
+    ret = rknn.export_rknn(rknn_model)
+    if ret != 0:
+        raise RuntimeError("Ошибка экспорта RKNN")
+
+
 def convert_onnx_to_rknn(
     onnx_model: str = None,
     rknn_model: str = None,
@@ -37,30 +69,7 @@ def convert_onnx_to_rknn(
         calib_dataset = str(resolver.calib / "calib_dataset.txt")
 
     rknn = RKNN(verbose=True)
-
-    # Целевая платформа строго rv1103 (Luckfox Pico Plus)
-    rknn.config(
-        target_platform="rv1103",
-        quantized_dtype="asymmetric_quantized-8",
-        quantized_algorithm="normal",
-    )
-
-    print("--> Загрузка ONNX модели...")
-    ret = rknn.load_onnx(model=onnx_model)
-    if ret != 0:
-        raise RuntimeError("Ошибка загрузки ONNX")
-
-    print("--> Квантование в INT8 и компиляция под NPU RV1103...")
-    ret = rknn.build(do_quantization=True, dataset=calib_dataset)
-    if ret != 0:
-        raise RuntimeError("Ошибка сборки RKNN")
-
-    print("--> Экспорт .rknn файла...")
-    os.makedirs(os.path.dirname(rknn_model) or ".", exist_ok=True)
-    ret = rknn.export_rknn(rknn_model)
-    if ret != 0:
-        raise RuntimeError("Ошибка экспорта RKNN")
-
+    build_rknn_model(rknn, onnx_model, rknn_model, calib_dataset)
     rknn.release()
     print(f"[DONE] Готово: {rknn_model}")
     return rknn_model

@@ -42,6 +42,7 @@ htmlcov/
 *.tgz
 
 # IDE и редакторы
+.openidea/
 .vscode/
 .idea/
 *.swp
