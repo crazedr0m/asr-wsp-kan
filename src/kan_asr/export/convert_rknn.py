@@ -41,15 +41,79 @@ def build_rknn_model(rknn, onnx_model: str, rknn_model: str, calib_dataset: str)
         raise RuntimeError("Ошибка экспорта RKNN")
 
 
+def _evaluate_after_conversion(
+    onnx_model: str,
+    rknn_model: str,
+    calib_dataset: str,
+    n_cases: int = 3,
+    report_path: str | None = None,
+) -> None:
+    """
+    Проверяет распознавание INT8-модели в симуляторе NPU после конвертации.
+
+    Считает exact-match/CER и сохраняет отчёт. Никогда не роняет конвертацию:
+    сбой эмулятора или отсутствие данных логируются и подавляются.
+
+    Args:
+        onnx_model: путь к ONNX (симулятор собирает ``.rknn`` из него заново).
+        rknn_model: путь к только что собранному ``.rknn``.
+        calib_dataset: файл калибровочных ``.npy``.
+        n_cases: сколько кейсов оценить.
+        report_path: куда сохранить JSON (по умолчанию
+            ``artifacts/reports/convert_recognition.json``).
+    """
+    try:
+        from ..inference.recognize import (
+            evaluate_recognition,
+            load_recognition_cases,
+            recognize_rknn_simulator,
+            save_recognition_report,
+        )
+    except Exception as exc:  # noqa: BLE001 - защитная ветка (не роняем конвертацию)
+        print(f"[WARN] Eval распознавания недоступен: {exc}")
+        return
+
+    cases = load_recognition_cases(n=n_cases)
+    if not cases:
+        print("[WARN] Eval распознавания пропущен: нет кейсов (make data)")
+        return
+
+    try:
+        report = evaluate_recognition(
+            cases,
+            lambda wav: recognize_rknn_simulator(
+                wav,
+                onnx_model=onnx_model,
+                rknn_model=rknn_model,
+                calib_dataset=calib_dataset,
+            ),
+            verbose=False,
+        )
+    except Exception as exc:  # noqa: BLE001 - защитная ветка (не роняем конвертацию)
+        print(f"[WARN] Eval распознавания INT8 не удался: {exc}")
+        return
+
+    if report_path is None:
+        report_path = str(resolver.artifacts / "reports" / "convert_recognition.json")
+    save_recognition_report(report, report_path)
+    print(report.summary())
+    print(f"[DONE] Отчёт распознавания INT8 сохранён: {report_path}")
+
+
 def convert_onnx_to_rknn(
-    onnx_model: str = None,
-    rknn_model: str = None,
-    calib_dataset: str = None,
+    onnx_model: str | None = None,
+    rknn_model: str | None = None,
+    calib_dataset: str | None = None,
+    eval_after_convert: bool = True,
+    eval_cases: int = 3,
 ):
     """
     Конвертирует ONNX-модель в RKNN с INT8-квантованием под rv1103.
 
     Требует установленного ``rknn-toolkit2`` (импортируется лениво).
+
+    После сборки ``.rknn`` проверяет распознавание INT8 в симуляторе NPU
+    (exact-match/CER) и сохраняет отчёт ``convert_recognition.json``.
     """
     try:
         from rknn.api import RKNN
@@ -72,6 +136,15 @@ def convert_onnx_to_rknn(
     build_rknn_model(rknn, onnx_model, rknn_model, calib_dataset)
     rknn.release()
     print(f"[DONE] Готово: {rknn_model}")
+
+    if eval_after_convert:
+        _evaluate_after_conversion(
+            onnx_model=onnx_model,
+            rknn_model=rknn_model,
+            calib_dataset=calib_dataset,
+            n_cases=eval_cases,
+        )
+
     return rknn_model
 
 

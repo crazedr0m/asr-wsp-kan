@@ -25,13 +25,22 @@ python scripts/generate_dataset.py
 python scripts/wsp_init.py --whisper-state whisper_tiny.pt
 python scripts/train.py --wsp-checkpoint artifacts/checkpoints/tiny_kan_wsp_initialized.pt
 
-# 3. Экспорт ONNX -> RKNN INT8
+# 3. Экспорт ONNX -> RKNN INT8 (в конце — проверка распознавания INT8)
 python scripts/export_onnx.py
 python scripts/convert_rknn.py
 
 # 4. Проверка точности INT8 в симуляторе NPU (без платы)
 python scripts/verify_rknn.py --accuracy-analysis
+
+# 5. Распознавание WAV → текст (exact-match / CER) на трёх уровнях
+python scripts/recognize.py --device host        # хост (PyTorch)
+python scripts/recognize.py --device simulator   # симулятор NPU
+python scripts/recognize.py --device rv1103      # плата (USB/ADB)
 ```
+
+После обучения, дообучения и конвертации INT8 качество распознавания считается
+автоматически и сохраняется в `artifacts/reports/` (`train_recognition.json`,
+`finetune_recognition.json`, `convert_recognition.json`).
 
 ## Проверка в симуляторе NPU
 
@@ -65,6 +74,16 @@ python scripts/verify_rknn.py --target rv1103 --warmup 3 --iterations 20 \
 снимает пиковую память (`eval_memory`) и сохраняет отчёт в
 `artifacts/rknn/perf_report.json`. Коды возврата: `0` — пороги пройдены,
 `1` — не пройдены, `2` — плата/ADB недоступны.
+
+## Распознавание WAV → текст
+
+Сквозной контур качества (не производительности): [`scripts/recognize.py`](../scripts/recognize.py)
+подаёт WAV из `data/synth` и сравнивает распознанный текст с эталоном из
+`metadata.csv`. Главная метрика — доля точных совпадений
+(`recognized_text == reference_text`), дополнительно CER и WER. Единый хелпер
+`evaluate_recognition` из [`src/kan_asr/inference/recognize.py`](../src/kan_asr/inference/recognize.py)
+переиспользуется тестами и этапами пайплайна. Подробнее — в
+[`docs/setup.md`](setup.md).
 
 ## Сборка C++ инференса для Luckfox Pico Plus
 

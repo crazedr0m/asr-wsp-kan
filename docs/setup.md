@@ -186,6 +186,67 @@ Cosine similarity: 0.988930
 Тесты бенчмарка — [`tests/test_rknn_benchmark.py`](../tests/test_rknn_benchmark.py)
 (интеграционный замер пропускается, если плата не подключена).
 
+---
+
+## Распознавание WAV → текст (сквозная проверка)
+
+Отдельный контур проверяет не задержку, а **качество распознавания**: подаёт
+реальные WAV из `data/synth` и сравнивает распознанный текст с эталонным из
+`metadata.csv`. Главная метрика — доля **точных совпадений**
+(`recognized_text == reference_text`), дополнительно считаются CER и WER.
+
+Единый пайплайн [`src/kan_asr/inference/recognize.py`](../src/kan_asr/inference/recognize.py):
+`WAV → load_audio → audio_to_mel → fit_mel_length → модель → greedy_ctc_decode`.
+
+```bash
+# Хост (PyTorch, float32)
+python scripts/recognize.py --device host
+# или: make recognize-host
+
+# Симулятор NPU (RKNN INT8, target=None)
+python scripts/recognize.py --device simulator
+# или: make recognize-sim
+
+# Реальная плата Luckfox (USB/ADB)
+python scripts/recognize.py --device rv1103
+# или: make recognize-board
+
+# Строгий gate: падать, если нет точных совпадений / CER выше порога
+KAN_ASR_STRICT_RECOGNITION=1 python scripts/recognize.py --device host \
+    --min-exact-match 0.5 --max-cer 0.3
+```
+
+Ключевые параметры: `--device {host,simulator,rv1103}`, `--wav`, `--cases`,
+`--offset`, `--checkpoint`, `--onnx`, `--rknn`, `--target`, `--device-id`,
+`--min-exact-match`, `--max-cer`, `--report`. Коды возврата: `0` — пороги
+пройдены, `1` — провалены, `2` — ошибка окружения (нет чекпоинта/`rknn`/платы).
+
+Пороги и число кейсов читаются из окружения:
+
+| Переменная | Смысл | По умолчанию |
+|---|---|---|
+| `KAN_ASR_STRICT_RECOGNITION` | включить строгие проверки exact-match/CER | `0` |
+| `KAN_ASR_MIN_EXACT_MATCH` | минимальная доля точных совпадений | `0.0` |
+| `KAN_ASR_RECOGNITION_MAX_CER` | максимально допустимый CER | `1.0` |
+| `KAN_ASR_RECOGNITION_CASES` | сколько кейсов брать в тестах | `3` |
+| `KAN_ASR_SIM_HOST_MAX_CER` | допуск CER(хост, симулятор) | `0.5` |
+
+Тот же хелпер `evaluate_recognition` переиспользуется этапами пайплайна:
+после обучения сохраняется `artifacts/reports/train_recognition.json`, после
+дообучения — `finetune_recognition.json` (с дельтой), после конвертации INT8 —
+`convert_recognition.json`.
+
+Тесты по уровням:
+
+- [`tests/test_recognize_host.py`](../tests/test_recognize_host.py) — хост;
+- [`tests/test_recognize_simulator.py`](../tests/test_recognize_simulator.py) — симулятор NPU
+  (+ согласованность с хостом);
+- [`tests/test_recognize_device.py`](../tests/test_recognize_device.py) — реальная плата (метка `hardware`).
+
+Без чекпоинта/`rknn`/платы тесты **пропускаются**, поэтому обычный `make test`
+не падает. Точечный запуск: `make test-recognition` (метка `recognition`),
+`make test-hardware` (метка `hardware`).
+
 ## Следующие шаги после установки
 
 1. Проверка установки зависимостей (`pytest tests/ -v`)
@@ -195,5 +256,7 @@ Cosine similarity: 0.988930
 5. Экспорт: `python scripts/export_onnx.py` -> `python scripts/convert_rknn.py`
 6. Проверка в симуляторе NPU: `python scripts/verify_rknn.py`
 7. Замер на плате (USB/ADB): `python scripts/verify_rknn.py --target rv1103`
+8. Распознавание WAV → текст: `python scripts/recognize.py --device host`
+   (затем `--device simulator` и `--device rv1103`)
 
 См. также: [Архитектура](architecture.md), [Weight-Space Programming](wsp.md).

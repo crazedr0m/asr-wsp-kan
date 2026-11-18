@@ -21,7 +21,14 @@ graph LR
     E --> F[export/export_onnx.py]
     F --> G[export/convert_rknn.py INT8]
     G --> H[edge/luckfox_asr_inference.cpp NPU]
+    E -.eval.-> R[inference/recognize.py WAV→текст]
+    G -.eval.-> R
+    H -.eval.-> R
 ```
+
+Сквозная проверка качества распознавания (exact-match / CER) выполняется единым
+хелпером [`inference/recognize.py`](../src/kan_asr/inference/recognize.py) на всех
+этапах: после обучения, дообучения, конвертации INT8 и на самой плате.
 
 ## 3. Структура пакета
 
@@ -34,7 +41,8 @@ graph LR
 | [`wsp/`](../src/kan_asr/wsp/) | Ядро WSP: `extract`, `project`, `initialize`, `hyper_adapter` |
 | [`data/`](../src/kan_asr/data/) | `vocab`, `mel`, `augment`, `generate`, `dataset` |
 | [`training/`](../src/kan_asr/training/) | `ctc`, `alignment`, `metrics`, `train` |
-| [`export/`](../src/kan_asr/export/) | `export_onnx`, `convert_rknn` |
+| [`export/`](../src/kan_asr/export/) | `export_onnx`, `convert_rknn`, `verify_rknn` |
+| [`inference/`](../src/kan_asr/inference/) | `recognize` — WAV→текст на хосте/в симуляторе/на плате + `evaluate_recognition` (exact-match/CER/WER) |
 | [`bot/`](../src/kan_asr/bot/) | Telegram-бот (Active Learning): `app`, `handlers`, `finetune_worker` |
 | [`utils/`](../src/kan_asr/utils/) | `paths` (резолвер), `logging` |
 
@@ -82,6 +90,12 @@ JIT-компилируемое через `torch.utils.cpp_extension.load`:
 раннер RKNN для RV1103 (вход `[1,40,1,200]`, выход `[1,35,1,50]`, greedy CTC-декод).
 Сборка описана в [`edge/CMakeLists.txt`](../edge/CMakeLists.txt) и
 [`edge/README.md`](../edge/README.md).
+
+Сквозная проверка распознавания на реальной плате (exact-match/CER, метка
+`hardware`) — [`inference/recognize.py`](../src/kan_asr/inference/recognize.py)
+(`recognize_on_device`) и [`scripts/recognize.py`](../scripts/recognize.py)
+(`--device rv1103`). Mel считается на хосте, так как C++-Mel на устройстве
+пока не реализован.
 
 ## 7. Конфигурация
 

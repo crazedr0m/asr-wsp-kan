@@ -47,6 +47,22 @@ python scripts/verify_rknn.py --accuracy-analysis
 проверяет лимиты платы: размер `.rknn` ≤ 4 МБ и пиковая память ≤ 64 МБ.
 См. [`docs/setup.md`](../docs/setup.md).
 
+## Распознавание WAV → текст на подключённой плате (USB/ADB)
+
+Тот же контур, что и на хосте/в симуляторе, но с инференсом на NPU RV1103.
+Mel считается на хосте (C++-Mel на устройстве ещё не реализован) и подаётся
+в INT8-модель по USB/ADB:
+
+```bash
+python scripts/recognize.py --device rv1103
+# или: make recognize-board
+```
+
+Скрипт сам поднимает `rknn_server`, считает exact-match/CER против эталона из
+`data/synth/metadata.csv` и пишет отчёт `artifacts/reports/recognition_report.json`.
+Тесты уровня платы — [`tests/test_recognize_device.py`](../tests/test_recognize_device.py)
+(метка `hardware`, `make test-hardware`); пропускаются без `rknn`/`adb`/платы.
+
 ## Замер производительности на подключённой плате (USB/ADB)
 
 Когда Luckfox Pico Plus подключена к хосту по USB, можно измерить реальную

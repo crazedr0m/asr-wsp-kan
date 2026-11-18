@@ -13,8 +13,8 @@ import os
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 from torch.utils.data import DataLoader
 
 from ..data.dataset import ASRDataset, collate_fn
@@ -28,7 +28,9 @@ from .ctc import ctc_log_probs
 logger = get_logger("training.train")
 
 
-def _load_wsp_checkpoint(model: nn.Module, wsp_checkpoint: str, device: torch.device) -> bool:
+def _load_wsp_checkpoint(
+    model: nn.Module, wsp_checkpoint: str | None, device: torch.device
+) -> bool:
     """Загружает WSP-инициализацию в модель. Возвращает True при успехе."""
     if not wsp_checkpoint:
         return False
@@ -52,7 +54,7 @@ def _load_wsp_checkpoint(model: nn.Module, wsp_checkpoint: str, device: torch.de
 
 def _build_alignment(
     model: nn.Module,
-    whisper_state: str,
+    whisper_state: str | None,
     device: torch.device,
     anchor_weight: float = 1e-3,
 ):
@@ -83,28 +85,88 @@ def _build_alignment(
     return teacher, align_criterion
 
 
+def _evaluate_after_training(
+    checkpoint_path: str,
+    data_dir: str,
+    n_cases: int = 5,
+    offset: int = 0,
+    device: str = "cpu",
+    report_path: str | None = None,
+) -> None:
+    """
+    Считает exact-match/CER на кейсах после обучения и сохраняет отчёт.
+
+    Никогда не роняет обучение: любые ошибки логируются и подавляются, чтобы
+    отсутствие данных или сбоя инференса не ломали основной пайплайн.
+
+    Args:
+        checkpoint_path: только что сохранённый ``.pt``.
+        data_dir: каталог с ``metadata.csv`` (обычно ``data/synth``).
+        n_cases: сколько кейсов оценить.
+        offset: сколько первых строк ``metadata.csv`` пропустить. Для честной
+            оценки задайте размер обучающей части (held-out «хвост»).
+        device: устройство инференса.
+        report_path: куда сохранить JSON (по умолчанию
+            ``artifacts/reports/train_recognition.json``).
+    """
+    try:
+        from ..inference.recognize import (
+            evaluate_recognition,
+            load_recognition_cases,
+            recognize_torch,
+            save_recognition_report,
+        )
+    except Exception as exc:  # noqa: BLE001 - защитная ветка (не роняем обучение)
+        logger.warning("Eval распознавания недоступен: %s", exc)
+        return
+
+    cases = load_recognition_cases(n=n_cases, data_dir=data_dir, offset=offset)
+    if not cases:
+        logger.warning("Eval распознавания пропущен: нет кейсов в %s", data_dir)
+        return
+
+    try:
+        report = evaluate_recognition(
+            cases,
+            lambda wav: recognize_torch(wav, checkpoint_path, device=device),
+            verbose=False,
+        )
+    except Exception as exc:  # noqa: BLE001 - защитная ветка (не роняем обучение)
+        logger.warning("Eval распознавания не удался: %s", exc)
+        return
+
+    if report_path is None:
+        report_path = str(resolver.artifacts / "reports" / "train_recognition.json")
+    save_recognition_report(report, report_path)
+    logger.info("Eval после обучения: %s", report.summary())
+    logger.info("Отчёт распознавания сохранён: %s", report_path)
+
+
 def train(
-    data_dir: str = None,
+    data_dir: str | None = None,
     epochs: int = 5,
     batch_size: int = 16,
     lr: float = 1e-3,
     weight_decay: float = 1e-4,
     grad_clip: float = 1.0,
-    calib_dir: str = None,
-    calib_file: str = None,
-    checkpoint_path: str = None,
-    device: str = None,
-    wsp_checkpoint: str = None,
+    calib_dir: str | None = None,
+    calib_file: str | None = None,
+    checkpoint_path: str | None = None,
+    device: str | None = None,
+    wsp_checkpoint: str | None = None,
     use_alignment: bool = False,
     align_weight: float = 0.3,
-    whisper_state: str = None,
+    whisper_state: str | None = None,
     anchor_weight: float = 1e-3,
     num_calib_samples: int = 20,
     calib_window_frames: int = 200,
     use_hyper_adapter: bool = False,
     adapter_rank: int = 8,
     adapter_latent_dim: int = 32,
-    base_checkpoint: str = None,
+    base_checkpoint: str | None = None,
+    eval_after_train: bool = True,
+    eval_cases: int = 5,
+    eval_offset: int = 0,
 ):
     """
     Обучает TinyKAN_ASR и сохраняет калибровочные данные для RKNN INT8.
@@ -299,6 +361,16 @@ def train(
         torch.save(adapter.state_dict(), adapter_path)
         logger.info("Hyper-Adapter сохранён: %s", adapter_path)
     logger.info("Список калибровки: %s", calib_file)
+
+    # Сквозная проверка распознавания WAV → текст (exact-match / CER)
+    if eval_after_train:
+        _evaluate_after_training(
+            checkpoint_path=checkpoint_path,
+            data_dir=data_dir,
+            n_cases=eval_cases,
+            offset=eval_offset,
+            device=str(device),
+        )
 
     return model
 

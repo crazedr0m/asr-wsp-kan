@@ -39,9 +39,9 @@ def _read_meta(root: str):
 
 
 def build_mixed_dataset(
-    real_dir: str = None,
-    synth_dir: str = None,
-    out_dir: str = None,
+    real_dir: str | None = None,
+    synth_dir: str | None = None,
+    out_dir: str | None = None,
     new_ratio: float = NEW_DATA_RATIO,
 ) -> str | None:
     """
@@ -90,18 +90,58 @@ def build_mixed_dataset(
     return out_dir
 
 
+def _measure_exact_match(
+    checkpoint_path: str, data_dir: str, n_cases: int = 5
+) -> tuple[float, float] | None:
+    """
+    Считает ``(exact_match_rate, cer)`` на кейсах из ``data_dir``.
+
+    Возвращает ``None``, если кейсов нет или инференс не удался. Никогда не
+    роняет дообучение.
+    """
+    try:
+        from ..inference.recognize import (
+            evaluate_recognition,
+            load_recognition_cases,
+            recognize_torch,
+        )
+    except Exception as exc:  # noqa: BLE001 - защитная ветка (не роняем дообучение)
+        logger.warning("Eval распознавания недоступен: %s", exc)
+        return None
+
+    cases = load_recognition_cases(n=n_cases, data_dir=data_dir)
+    if not cases:
+        logger.warning("Eval распознавания пропущен: нет кейсов в %s", data_dir)
+        return None
+
+    try:
+        report = evaluate_recognition(
+            cases,
+            lambda wav: recognize_torch(wav, checkpoint_path),
+            verbose=False,
+        )
+    except Exception as exc:  # noqa: BLE001 - защитная ветка (не роняем дообучение)
+        logger.warning("Eval распознавания не удался: %s", exc)
+        return None
+    return report.exact_match_rate, report.cer
+
+
 def run_finetune(
     epochs: int = 3,
     batch_size: int = 8,
     lr: float = 5e-4,
     use_hyper_adapter: bool = True,
-    base_checkpoint: str = None,
+    base_checkpoint: str | None = None,
+    eval_after_finetune: bool = True,
+    eval_cases: int = 5,
 ) -> None:
     """
     Запускает дообучение на смешанном датасете (ленивый импорт train).
 
     При ``use_hyper_adapter=True`` обучаются только низкоранговые поправки
     Delta-W (``WeightSpaceHyperAdapter``), базовая модель заморожена.
+    После дообучения считает дельту точных совпадений относительно базового
+    чекпоинта и сохраняет отчёт ``artifacts/reports/finetune_recognition.json``.
     """
     from ..training.train import train
 
@@ -119,6 +159,12 @@ def run_finetune(
         lr,
         use_hyper_adapter,
     )
+    checkpoint_path = str(resolver.checkpoints / "best.pt")
+
+    before = None
+    if eval_after_finetune and os.path.exists(base_checkpoint):
+        before = _measure_exact_match(base_checkpoint, data_dir, n_cases=eval_cases)
+
     train(
         data_dir=data_dir,
         epochs=epochs,
@@ -126,5 +172,80 @@ def run_finetune(
         lr=lr,
         use_hyper_adapter=use_hyper_adapter,
         base_checkpoint=base_checkpoint,
+        eval_after_train=False,
     )
+
+    if eval_after_finetune and os.path.exists(checkpoint_path):
+        _report_finetune_delta(
+            base_checkpoint=base_checkpoint,
+            checkpoint_path=checkpoint_path,
+            data_dir=data_dir,
+            n_cases=eval_cases,
+            before=before,
+        )
+
     logger.info("Дообучение завершено.")
+
+
+def _report_finetune_delta(
+    base_checkpoint: str,
+    checkpoint_path: str,
+    data_dir: str,
+    n_cases: int = 5,
+    before: tuple[float, float] | None = None,
+) -> None:
+    """
+    Считает дельту exact-match/CER после дообучения и сохраняет JSON-отчёт.
+
+    Args:
+        base_checkpoint: чекпоинт до дообучения (для сравнения).
+        checkpoint_path: чекпоинт после дообучения.
+        data_dir: каталог с кейсами.
+        n_cases: сколько кейсов оценить.
+        before: заранее измеренные ``(exact_match_rate, cer)`` базы (если есть).
+    """
+    after = _measure_exact_match(checkpoint_path, data_dir, n_cases=n_cases)
+    if after is None:
+        return
+
+    after_rate, after_cer = after
+    delta_rate = None
+    delta_cer = None
+    if before is not None:
+        delta_rate = after_rate - before[0]
+        delta_cer = after_cer - before[1]
+        logger.info(
+            "Дообучение: exact-match %.3f -> %.3f (delta %+.3f) | CER %.4f -> %.4f (delta %+.4f)",
+            before[0],
+            after_rate,
+            delta_rate,
+            before[1],
+            after_cer,
+            delta_cer,
+        )
+    else:
+        logger.info(
+            "Дообучение: exact-match %.3f | CER %.4f", after_rate, after_cer
+        )
+
+    payload = {
+        "base_checkpoint": base_checkpoint,
+        "checkpoint": checkpoint_path,
+        "n_cases": n_cases,
+        "exact_match_rate": after_rate,
+        "cer": after_cer,
+        "exact_match_rate_before": before[0] if before is not None else None,
+        "cer_before": before[1] if before is not None else None,
+        "delta_exact_match_rate": delta_rate,
+        "delta_cer": delta_cer,
+    }
+    report_path = str(resolver.artifacts / "reports" / "finetune_recognition.json")
+    try:
+        import json
+
+        os.makedirs(os.path.dirname(report_path), exist_ok=True)
+        with open(report_path, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+        logger.info("Отчёт дообучения сохранён: %s", report_path)
+    except Exception as exc:  # noqa: BLE001 - защитная ветка (отчёт не критичен)
+        logger.warning("Не удалось сохранить отчёт дообучения: %s", exc)

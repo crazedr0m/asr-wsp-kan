@@ -6,7 +6,8 @@
 PYTHON ?= ./venv/bin/python
 PIP    ?= ./venv/bin/pip
 
-.PHONY: help data wsp train export rknn verify-rknn bench-rknn adb-devices bot test clean install
+.PHONY: help data wsp train export rknn verify-rknn bench-rknn adb-devices bot \
+	recognize-host recognize-sim recognize-board test test-recognition test-hardware clean install
 
 help:
 	@echo "Доступные цели:"
@@ -19,7 +20,12 @@ help:
 	@echo "  bench-rknn — замер latency/FPS/RTF на плате (USB/ADB)"
 	@echo "  adb-devices — список подключённых по ADB устройств"
 	@echo "  bot       — запуск Telegram-бота"
+	@echo "  recognize-host  — распознавание WAV→текст на хосте (PyTorch)"
+	@echo "  recognize-sim   — распознавание WAV→текст в симуляторе NPU"
+	@echo "  recognize-board — распознавание WAV→текст на плате (USB/ADB)"
 	@echo "  test      — запуск тестов"
+	@echo "  test-recognition — E2E-тесты распознавания (метка recognition)"
+	@echo "  test-hardware — тесты на подключённой плате (метка hardware)"
 	@echo "  clean     — удаление временных файлов"
 	@echo "  install   — установка зависимостей"
 
@@ -59,9 +65,29 @@ bot:
 	@echo "Запуск Telegram-бота..."
 	$(PYTHON) scripts/run_bot.py
 
+recognize-host:
+	@echo "Распознавание WAV→текст на хосте (PyTorch)..."
+	$(PYTHON) scripts/recognize.py --device host
+
+recognize-sim:
+	@echo "Распознавание WAV→текст в симуляторе NPU..."
+	$(PYTHON) scripts/recognize.py --device simulator
+
+recognize-board:
+	@echo "Распознавание WAV→текст на плате (USB/ADB)..."
+	$(PYTHON) scripts/recognize.py --device rv1103
+
 test:
 	@echo "Запуск тестов..."
 	$(PYTHON) -m pytest tests/ -v
+
+test-recognition:
+	@echo "E2E-тесты распознавания WAV→текст..."
+	$(PYTHON) -m pytest tests/ -v -m recognition
+
+test-hardware:
+	@echo "Тесты на подключённой плате Luckfox..."
+	$(PYTHON) -m pytest tests/ -v -m hardware
 
 clean:
 	@echo "Очистка временных файлов..."
